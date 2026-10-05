@@ -58,10 +58,17 @@ validation.
   grams. No floating-point arithmetic for money.
 - Assumption (configurable, owner to confirm): per-species minimum order and
   order step (default min 1 kg, step 0.5 kg).
-- Assumption (revisit in T3): per-species exception tiers also measure the
-  order's total kg; only their percentages differ.
-- Assumption (verify with accountant): unprocessed fresh fish is VAT 0% in
-  Ecuador; tax rate kept per species, not hardcoded.
+- Confirmed (2025-10-05): per-species CUSTOM tiers are selected by the
+  order's **total kg across species** (option a); only their percentages
+  differ from the global tiers.
+- **VAT is configurable, not hardcoded** (owner, 2025-10-05): currently 15% in
+  Ecuador, must change by configuration when national policy changes,
+  effective-dated so historical orders keep the rate they were charged.
+  Parent flag (from memory, not verified against the current law text): the
+  LRTI 0% VAT list has historically included fish kept in its natural
+  state; owner to confirm with the accountant. Species therefore carry a VAT
+  category (STANDARD | ZERO_RATED, default STANDARD per owner) so either
+  outcome needs only configuration.
 
 ## Checks
 
@@ -76,10 +83,11 @@ validation.
 - Forecast: ~1,000 authored changed lines (generated scaffold excluded) →
   chained PRs.
   - PR 1: T1 + T2 (scaffold + schema)
-  - PR 2: T3 (money/weight + volume pricing)
+  - PR 2: T3 + T3b (pricing domain + configurable VAT schema)
   - PR 3: T4 + T5 (season/shipment windows + lot reservation)
-- Running count: 272 (T1) + 401 (T2) = 673, lockfile and migration SQL
-  excluded. PR 1 slice = `d4679ec..1663c54` (+ docs commits).
+- Running count: 272 (T1) + 401 (T2) + 1,062 (T3) = 1,735, lockfile and
+  migration SQL excluded. PR 1 slice = `d4679ec..bb4e242`. PR 2 slice =
+  `bf463d2..` (T3 + T3b).
 
 ## Tasks
 
@@ -100,9 +108,21 @@ validation.
       (worker + independent gentle-ai-verify). Native review: assess
       unavailable → started on commit; tier medium, lens reliability,
       approved and acknowledged (`review-ca8ba087c5824378`).
-- [ ] T3 — Domain: `Money` (cents) and `Weight` (grams) value objects;
+- [x] T3 — Domain: `Money` (cents) and `Weight` (grams) value objects;
       volume tier pricing (global % tiers by order total kg, per-species tier
-      exceptions, locked order total). TDD. Route: delegated.
+      exceptions, VAT by category with the applicable rate as input, locked
+      order totals). TDD. Route: delegated to gentle-ai-worker.
+      Commit `bf463d2`. TDD RED→GREEN observed per module (money, weight,
+      pricing, barrel); 55 tests; lint/typecheck/build pass; independent
+      gentle-ai-verify pass with hand recomputation. Native review: assess
+      unavailable → started on commit; medium, reliability lens, approved
+      and acknowledged (`review-e3b59cd431b36bc5`). 1,062 authored lines
+      (about 60% tests) — exceeds the 400 heuristic because each money rule
+      carries concrete-number tests; not split.
+- [ ] T3b — Schema: configurable effective-dated VAT (`tax_rate` table:
+      category, rate bps, effective from; species `vat_category` replaces
+      `vat_rate_bps`); seed STANDARD 15% and ZERO_RATED 0%; orders keep the
+      locked rate per line. New migration. Route: delegated.
 - [ ] T4 — Domain: season availability (pre-sale only inside the window) and
       shipment ordering window (cutoff before departure, per-city). TDD.
       Route: delegated.
@@ -131,7 +151,15 @@ validation.
   discount + VAT) once T3 fixes the pricing formula.
 - Integration test for migration + seed (opt-in, outside the default run).
 - Add `server-only` guard to `src/lib/db.ts` when the first UI imports it.
+- `grossOf`/`percentOf`: guard the intermediate product with
+  `Number.isSafeInteger` (silent ±1¢ only far beyond realistic orders).
+- `formatUsd`/`formatKilograms`: output depends on runtime ICU data; pin or
+  test in CI on the deploy runtime.
+- Pricing validation: reject `null` elements inside tier arrays explicitly.
+- UI kg input: `"1,000"` / `"1.000"` parse as 1 kg (decimal), never as
+  thousands; the storefront input must make the decimal separator
+  unambiguous.
 
 ## Next step
 
-T3 — Money/Weight + volume pricing (TDD).
+T3b — configurable effective-dated VAT schema.
