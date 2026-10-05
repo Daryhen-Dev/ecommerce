@@ -71,13 +71,17 @@ validation.
   - PR 1: T1 + T2 (scaffold + schema)
   - PR 2: T3 (money/weight + volume pricing)
   - PR 3: T4 + T5 (season/shipment windows + lot reservation)
-- Running count: 0.
+- Running count: 272 (T1, lockfile excluded).
 
 ## Tasks
 
-- [ ] T1 — Scaffold Next.js 16 + TypeScript + ESLint + Vitest + pnpm scripts
+- [x] T1 — Scaffold Next.js 16 + TypeScript + ESLint + Vitest + pnpm scripts
       (`lint`, `typecheck`, `test`), README with local setup. Route: delegated
-      (multi-file write rule).
+      (multi-file write rule) to gentle-ai-worker; parent fixed `.env.example`
+      ignore negation and Vitest ESM config (`vitest.config.mts`).
+      Commit `d4679ec`. Checks: lint/typecheck/test/build pass (worker +
+      independent gentle-ai-verify). Review: native assess unavailable (root
+      commit, no base ref) → treated as high; independent verifier passed.
 - [ ] T2 — PostgreSQL via docker-compose, Prisma 7 setup, initial schema:
       City/Airport, Species, Season, Lot, Shipment, PriceTier, Order,
       OrderItem; first migration. Route: delegated (multi-file write rule).
@@ -98,8 +102,10 @@ validation.
 
 ## Progress / evidence
 
-- Branch and commits: pending.
+- Branch: `feat/platform-foundation`.
+- T1: `d4679ec` chore: scaffold Next.js 16 app with TypeScript, ESLint and
+  Vitest. Versions: next 16.3.8, react 19.2.8, typescript 5.9.3, vitest 5.0.3.
 
 ## Next step
 
-T1 — scaffold.
+T2 — Postgres + Prisma schema.
