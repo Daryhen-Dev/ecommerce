@@ -27,8 +27,13 @@ build on verified rules.
   **full amount upfront** and waits for the shipment.
 - Real weight may differ by about ±2–3 lb (~±1.4 kg); the business absorbs it.
   **No post-weighing price adjustment or refund.**
-- **Volume discount per customer order:** price per kg decreases by kg tiers;
-  the price is locked at payment.
+- **Volume discount per customer order (option 3, confirmed):** each species
+  has its own list price per kg; global percentage tiers apply to all species,
+  selected by the order's **total kg across species** (cargo is billed by kg
+  regardless of species). **Exceptions:** a species may use its own tiers
+  (replacing the global tiers for its lines) or be excluded from discounts
+  (e.g. lobster). Modeled as `discountPolicy`: GLOBAL | CUSTOM | NONE. Price
+  is locked at payment.
 - A shipment **always departs**, even with few kg (no minimum, no cancel).
 - Seasonal species (e.g. lobster) are **pre-sale within the season window**;
   after the season ends they cannot be purchased.
@@ -46,13 +51,15 @@ validation.
 
 ## Constraints and assumptions
 
-- Stack: Next.js 16 (App Router) + TypeScript, PostgreSQL 16 (Docker for
+- Stack: Next.js 16 (App Router) + TypeScript, PostgreSQL 17 (Docker for
   local dev), Prisma 7, Vitest. Package manager: pnpm.
 - Domain module (`src/domain`) has no framework or database imports.
 - Money stored as integer US cents (Ecuador uses USD); weight stored as integer
   grams. No floating-point arithmetic for money.
 - Assumption (configurable, owner to confirm): per-species minimum order and
   order step (default min 1 kg, step 0.5 kg).
+- Assumption (revisit in T3): per-species exception tiers also measure the
+  order's total kg; only their percentages differ.
 - Assumption (verify with accountant): unprocessed fresh fish is VAT 0% in
   Ecuador; tax rate kept per species, not hardcoded.
 
@@ -82,12 +89,14 @@ validation.
       Commit `d4679ec`. Checks: lint/typecheck/test/build pass (worker +
       independent gentle-ai-verify). Review: native assess unavailable (root
       commit, no base ref) → treated as high; independent verifier passed.
-- [ ] T2 — PostgreSQL via docker-compose, Prisma 7 setup, initial schema:
-      City/Airport, Species, Season, Lot, Shipment, PriceTier, Order,
-      OrderItem; first migration. Route: delegated (multi-file write rule).
+- [ ] T2 — PostgreSQL via docker-compose (host port 5433), Prisma 7 setup
+      (`prisma.config.ts`, `prisma-client` generator, `@prisma/adapter-pg`),
+      initial schema: Airport, Species, Season, DiscountTier (global or
+      per-species exception), Lot, Shipment, Order, OrderItem; first
+      migration. Route: delegated (multi-file write rule).
 - [ ] T3 — Domain: `Money` (cents) and `Weight` (grams) value objects;
-      volume tier pricing (price per kg by tier, locked order total). TDD.
-      Route: delegated.
+      volume tier pricing (global % tiers by order total kg, per-species tier
+      exceptions, locked order total). TDD. Route: delegated.
 - [ ] T4 — Domain: season availability (pre-sale only inside the window) and
       shipment ordering window (cutoff before departure, per-city). TDD.
       Route: delegated.
