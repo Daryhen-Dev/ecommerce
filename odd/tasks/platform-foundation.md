@@ -78,7 +78,8 @@ validation.
   - PR 1: T1 + T2 (scaffold + schema)
   - PR 2: T3 (money/weight + volume pricing)
   - PR 3: T4 + T5 (season/shipment windows + lot reservation)
-- Running count: 272 (T1, lockfile excluded).
+- Running count: 272 (T1) + 401 (T2) = 673, lockfile and migration SQL
+  excluded. PR 1 slice = `d4679ec..1663c54` (+ docs commits).
 
 ## Tasks
 
@@ -89,11 +90,16 @@ validation.
       Commit `d4679ec`. Checks: lint/typecheck/test/build pass (worker +
       independent gentle-ai-verify). Review: native assess unavailable (root
       commit, no base ref) → treated as high; independent verifier passed.
-- [ ] T2 — PostgreSQL via docker-compose (host port 5433), Prisma 7 setup
+- [x] T2 — PostgreSQL via docker-compose (host port 5433), Prisma 7 setup
       (`prisma.config.ts`, `prisma-client` generator, `@prisma/adapter-pg`),
       initial schema: Airport, Species, Season, DiscountTier (global or
       per-species exception), Lot, Shipment, Order, OrderItem; first
-      migration. Route: delegated (multi-file write rule).
+      migration. Route: delegated (multi-file write rule) to gentle-ai-worker.
+      Commit `1663c54`. Checks: prisma validate, fresh `migrate deploy`, seed
+      x2 idempotent, CHECK overselling guard proven, lint/typecheck/test/build
+      (worker + independent gentle-ai-verify). Native review: assess
+      unavailable → started on commit; tier medium, lens reliability,
+      approved and acknowledged (`review-ca8ba087c5824378`).
 - [ ] T3 — Domain: `Money` (cents) and `Weight` (grams) value objects;
       volume tier pricing (global % tiers by order total kg, per-species tier
       exceptions, locked order total). TDD. Route: delegated.
@@ -114,7 +120,18 @@ validation.
 - Branch: `feat/platform-foundation`.
 - T1: `d4679ec` chore: scaffold Next.js 16 app with TypeScript, ESLint and
   Vitest. Versions: next 16.3.8, react 19.2.8, typescript 5.9.3, vitest 5.0.3.
+- T2: `1663c54` feat(db). Versions: prisma/@prisma/client/@prisma/adapter-pg
+  7.10.0, dotenv 17.4.2, tsx 4.23.15, image postgres:17.6-alpine. Table
+  `orders` (reserved word). DiscountTier→Species FK forced to RESTRICT.
+
+## Follow-ups (non-blocking review findings, not yet scheduled)
+
+- `src/lib/db.ts`: fail fast with a clear error when `DATABASE_URL` is unset.
+- Add CHECK constraints on `orders` totals (non-negative, total = subtotal −
+  discount + VAT) once T3 fixes the pricing formula.
+- Integration test for migration + seed (opt-in, outside the default run).
+- Add `server-only` guard to `src/lib/db.ts` when the first UI imports it.
 
 ## Next step
 
-T2 — Postgres + Prisma schema.
+T3 — Money/Weight + volume pricing (TDD).
