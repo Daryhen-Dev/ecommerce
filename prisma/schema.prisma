@@ -1,0 +1,226 @@
+// Galápagos fresh-fish ecommerce schema.
+//
+// Conventions:
+// - Tables are snake_case via @@map, columns via @map.
+// - Money is integer USD cents (suffix Cents). Weight is integer grams
+//   (suffix Grams). Percentages are integer basis points (suffix Bps,
+//   10000 = 100%). Never Float/Decimal for money or weight.
+// - Relations default to onDelete Restrict: never cascade-delete business
+//   history. The only cascade is Order -> OrderItem (line items are part of
+//   the order aggregate).
+// - Timestamps use timestamptz(6).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DiscountPolicy {
+  GLOBAL
+  CUSTOM
+  NONE
+
+  @@map("discount_policy")
+}
+
+enum LotStatus {
+  OPEN
+  CLOSED
+
+  @@map("lot_status")
+}
+
+enum ShipmentStatus {
+  SCHEDULED
+  CLOSED
+  IN_TRANSIT
+  ARRIVED
+  COMPLETED
+
+  @@map("shipment_status")
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+  PICKED_UP
+
+  @@map("order_status")
+}
+
+model Airport {
+  id   String  @id @default(cuid())
+  code String  @unique
+  city String
+  name String
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  shipments Shipment[]
+
+  @@map("airport")
+}
+
+model Species {
+  id          String @id @default(cuid())
+  slug        String @unique
+  name        String
+  description String?
+
+  pricePerKgCents Int @map("price_per_kg_cents")
+  discountPolicy  DiscountPolicy @default(GLOBAL) @map("discount_policy")
+  minOrderGrams   Int @default(1000) @map("min_order_grams")
+  orderStepGrams  Int @default(500) @map("order_step_grams")
+  vatRateBps      Int @default(0) @map("vat_rate_bps")
+  isSeasonal      Boolean @default(false) @map("is_seasonal")
+  active          Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  seasons       Season[]
+  discountTiers DiscountTier[]
+  lots          Lot[]
+  orderItems    OrderItem[]
+
+  @@map("species")
+}
+
+model Season {
+  id String @id @default(cuid())
+
+  speciesId String @map("species_id")
+  species   Species @relation(fields: [speciesId], references: [id])
+
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt   DateTime @map("ends_at") @db.Timestamptz(6)
+
+  @@index([speciesId, startsAt])
+  @@map("season")
+}
+
+// speciesId null = global tier (applies to all species with GLOBAL policy).
+// speciesId set  = CUSTOM tier for that species (replaces global tiers for
+// its lines). Global tiers get an extra partial unique index on
+// min_total_grams in the migration, because Postgres treats NULLs as
+// distinct in the compound unique constraint.
+model DiscountTier {
+  id String @id @default(cuid())
+
+  speciesId String?  @map("species_id")
+  species   Species? @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+
+  minTotalGrams Int @map("min_total_grams")
+  discountBps   Int @map("discount_bps")
+
+  @@unique([speciesId, minTotalGrams])
+  @@map("discount_tier")
+}
+
+// One landing of one species at the dock.
+model Lot {
+  id String @id @default(cuid())
+
+  speciesId String  @map("species_id")
+  species   Species @relation(fields: [speciesId], references: [id])
+
+  landedAt      DateTime @map("landed_at") @db.Timestamptz(6)
+  totalGrams    Int      @map("total_grams")
+  reservedGrams Int      @default(0) @map("reserved_grams")
+  status        LotStatus @default(OPEN)
+  notes         String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  orderItems OrderItem[]
+
+  @@map("lot")
+}
+
+// One flight to one destination airport.
+model Shipment {
+  id String @id @default(cuid())
+
+  airportId String  @map("airport_id")
+  airport   Airport @relation(fields: [airportId], references: [id])
+
+  carrier      String?
+  flightNumber String? @map("flight_number")
+
+  orderCutoffAt     DateTime @map("order_cutoff_at") @db.Timestamptz(6)
+  departsAt         DateTime @map("departs_at") @db.Timestamptz(6)
+  estimatedArrivalAt DateTime @map("estimated_arrival_at") @db.Timestamptz(6)
+  pickupStartsAt    DateTime @map("pickup_starts_at") @db.Timestamptz(6)
+  pickupEndsAt      DateTime @map("pickup_ends_at") @db.Timestamptz(6)
+
+  status ShipmentStatus @default(SCHEDULED)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  orders Order[]
+
+  @@index([airportId, departsAt])
+  @@map("shipment")
+}
+
+// Human pickup code; customer pays upfront and picks up at the airport.
+model Order {
+  id String @id @default(cuid())
+
+  code       String   @unique
+  shipmentId String   @map("shipment_id")
+  shipment   Shipment @relation(fields: [shipmentId], references: [id])
+
+  customerName     String @map("customer_name")
+  customerEmail    String @map("customer_email")
+  customerPhone    String @map("customer_phone")
+  customerIdNumber String @map("customer_id_number")
+
+  status OrderStatus @default(PENDING_PAYMENT)
+
+  totalGrams    Int @map("total_grams")
+  subtotalCents Int @map("subtotal_cents")
+  discountCents Int @map("discount_cents")
+  vatCents      Int @map("vat_cents")
+  totalCents    Int @map("total_cents")
+
+  paidAt DateTime? @map("paid_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  items OrderItem[]
+
+  @@index([shipmentId, status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id String @id @default(cuid())
+
+  orderId String @map("order_id")
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  speciesId String  @map("species_id")
+  species   Species @relation(fields: [speciesId], references: [id])
+
+  lotId String @map("lot_id")
+  lot   Lot    @relation(fields: [lotId], references: [id])
+
+  grams            Int
+  pricePerKgCents  Int @map("price_per_kg_cents")
+  discountBps      Int @map("discount_bps")
+  lineTotalCents   Int @map("line_total_cents")
+
+  @@index([lotId])
+  @@map("order_item")
+}
