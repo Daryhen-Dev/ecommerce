@@ -75,12 +75,15 @@ describe("percentOf", () => {
 });
 
 describe("formatUsd", () => {
-  it("formats es-EC USD output as observed in this runtime", () => {
-    // Observed with Node's full ICU: new Intl.NumberFormat("es-EC",
-    // { style: "currency", currency: "USD" }).format(12.5) === "$12,50"
-    expect(formatUsd(cents(1250))).toBe("$12,50");
-    expect(formatUsd(cents(0))).toBe("$0,00");
-    expect(formatUsd(cents(123450))).toBe("$1.234,50");
+  it("formats USD with dot decimals and comma thousands, independent of ICU", () => {
+    // Deterministic US-style output (how USD amounts are written in Ecuador):
+    // pure integer/string arithmetic, never Intl, so no runtime ICU dependency.
+    expect(formatUsd(cents(1250))).toBe("$12.50");
+    expect(formatUsd(cents(0))).toBe("$0.00");
+    expect(formatUsd(cents(5))).toBe("$0.05");
+    expect(formatUsd(cents(50))).toBe("$0.50");
+    expect(formatUsd(cents(123450))).toBe("$1,234.50");
+    expect(formatUsd(cents(123456789))).toBe("$1,234,567.89");
   });
 
   it("rejects values violating the cents invariant", () => {

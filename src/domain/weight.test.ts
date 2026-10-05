@@ -32,17 +32,16 @@ describe("parseKilograms", () => {
     expect(parseKilograms("7.5")).toBe(gramsOf(7500));
   });
 
-  it("parses comma decimals: 7,5 kg -> 7500 g", () => {
-    expect(parseKilograms("7,5")).toBe(gramsOf(7500));
-  });
-
   it("parses whole kilograms: 8 -> 8000 g", () => {
     expect(parseKilograms("8")).toBe(gramsOf(8000));
   });
 
   it("parses three decimals: 0.125 -> 125 g", () => {
     expect(parseKilograms("0.125")).toBe(gramsOf(125));
-    expect(parseKilograms("0,125")).toBe(gramsOf(125));
+  });
+
+  it("trims surrounding whitespace: ' 7.5 ' -> 7500 g", () => {
+    expect(parseKilograms(" 7.5 ")).toBe(gramsOf(7500));
   });
 
   it("parses without float math: 0.1 + style inputs land on exact grams", () => {
@@ -55,9 +54,20 @@ describe("parseKilograms", () => {
     expect(() => parseKilograms("   ")).toThrow();
   });
 
+  it("rejects comma as decimal separator: ',' is never a separator", () => {
+    expect(() => parseKilograms("7,5")).toThrow();
+    expect(() => parseKilograms("0,125")).toThrow();
+    expect(() => parseKilograms("7,")).toThrow();
+  });
+
+  it("rejects comma as thousands grouping: grouping is not input syntax", () => {
+    expect(() => parseKilograms("1,000")).toThrow();
+    expect(() => parseKilograms("1,000.5")).toThrow();
+  });
+
   it("rejects zero and negative values", () => {
     expect(() => parseKilograms("0")).toThrow();
-    expect(() => parseKilograms("0,000")).toThrow();
+    expect(() => parseKilograms("0.000")).toThrow();
     expect(() => parseKilograms("-7.5")).toThrow();
   });
 
@@ -69,7 +79,7 @@ describe("parseKilograms", () => {
 
   it("rejects more than three decimals", () => {
     expect(() => parseKilograms("7.5001")).toThrow();
-    expect(() => parseKilograms("7,1234")).toThrow();
+    expect(() => parseKilograms("7.1234")).toThrow();
   });
 
   it("rejects exponent notation", () => {
@@ -79,7 +89,6 @@ describe("parseKilograms", () => {
 
   it("rejects a trailing separator with no decimals", () => {
     expect(() => parseKilograms("7.")).toThrow();
-    expect(() => parseKilograms("7,")).toThrow();
   });
 
   it("rejects values that overflow safe grams", () => {
@@ -88,16 +97,20 @@ describe("parseKilograms", () => {
 });
 
 describe("formatKilograms", () => {
-  it("formats 7500 g as '7,5 kg' (es-EC comma decimal)", () => {
-    expect(formatKilograms(gramsOf(7500))).toBe("7,5 kg");
+  it("formats 7500 g as '7.5 kg' (dot decimal, no trailing zeros)", () => {
+    expect(formatKilograms(gramsOf(7500))).toBe("7.5 kg");
   });
 
-  it("formats sub-kilogram weights: 125 g as '0,125 kg'", () => {
-    expect(formatKilograms(gramsOf(125))).toBe("0,125 kg");
+  it("formats 1250 g as '1.25 kg'", () => {
+    expect(formatKilograms(gramsOf(1250))).toBe("1.25 kg");
   });
 
-  it("formats 50 g as '0,05 kg' keeping trailing decimal places that matter", () => {
-    expect(formatKilograms(gramsOf(50))).toBe("0,05 kg");
+  it("formats sub-kilogram weights: 125 g as '0.125 kg'", () => {
+    expect(formatKilograms(gramsOf(125))).toBe("0.125 kg");
+  });
+
+  it("formats 50 g as '0.05 kg' keeping significant decimal places only", () => {
+    expect(formatKilograms(gramsOf(50))).toBe("0.05 kg");
   });
 
   it("formats whole kilograms without decimals: 8000 g as '8 kg'", () => {

@@ -23,23 +23,22 @@ export function grams(value: number): Grams {
 }
 
 /**
- * Parses a decimal kilogram string into grams. Accepts "." or "," as the
- * decimal separator and up to three decimals. Digits are handled as strings
- * (no float math). Rejects empty, negative, zero, non-numeric, more than
- * three decimals and exponent notation.
+ * Parses a decimal kilogram string into grams. Accepts only "." as the
+ * decimal separator (owner number standard, 2025-10-05) and up to three
+ * decimals; surrounding whitespace is trimmed. Digits are handled as strings
+ * (no float math). Rejects empty, negative, zero, non-numeric, comma (never
+ * a decimal or grouping separator), more than three decimals and exponent
+ * notation.
  */
 export function parseKilograms(input: string): Grams {
   const trimmed = input.trim();
-  const match = /^\d+(?:[.,]\d{1,3})?$/.exec(trimmed);
+  const match = /^\d+(?:\.\d{1,3})?$/.exec(trimmed);
   if (match === null) {
     throw new TypeError(
-      `parseKilograms: expected a positive decimal kg string with at most 3 decimals, got ${JSON.stringify(input)}`,
+      `parseKilograms: expected a positive decimal kg string with "." as the only decimal separator and at most 3 decimals, got ${JSON.stringify(input)}`,
     );
   }
-  const separatorIndex = Math.max(
-    trimmed.indexOf("."),
-    trimmed.indexOf(","),
-  );
+  const separatorIndex = trimmed.indexOf(".");
   const whole = separatorIndex === -1 ? trimmed : trimmed.slice(0, separatorIndex);
   const fraction = separatorIndex === -1 ? "0" : trimmed.slice(separatorIndex + 1).padEnd(3, "0");
   const total = Number(whole) * 1000 + Number(fraction);
@@ -47,8 +46,9 @@ export function parseKilograms(input: string): Grams {
 }
 
 /**
- * Formats grams as kilograms in es-EC style (comma decimal separator),
- * e.g. 7500 -> "7,5 kg", 125 -> "0,125 kg", 8000 -> "8 kg".
+ * Formats grams as kilograms with "." as the decimal separator (owner number
+ * standard) and no trailing zeros, e.g. 7500 -> "7.5 kg", 125 -> "0.125 kg",
+ * 8000 -> "8 kg".
  */
 export function formatKilograms(value: Grams): string {
   if (!isGrams(value)) {
@@ -60,5 +60,5 @@ export function formatKilograms(value: Grams): string {
     return `${whole} kg`;
   }
   const fraction = String(remainder).padStart(3, "0").replace(/0+$/, "");
-  return `${whole},${fraction} kg`;
+  return `${whole}.${fraction} kg`;
 }

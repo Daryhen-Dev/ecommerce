@@ -34,7 +34,7 @@ describe("domain module", () => {
       vatRatesBps: { STANDARD: 1500, ZERO_RATED: 0 },
     });
     expect(quote.totalCents).toBe(3450);
-    expect(domain.formatUsd(quote.totalCents)).toBe("$34,50");
+    expect(domain.formatUsd(quote.totalCents)).toBe("$34.50");
     expect(domain.formatKilograms(quote.lines[0].grams)).toBe("3 kg");
   });
 });

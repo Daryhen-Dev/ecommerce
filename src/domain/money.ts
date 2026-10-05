@@ -41,15 +41,19 @@ export function percentOf(amount: Cents, bps: number): Cents {
   return Math.floor((amount * bps + 5000) / 10000) as Cents;
 }
 
-const usdFormatter = new Intl.NumberFormat("es-EC", {
-  style: "currency",
-  currency: "USD",
-});
-
-/** Formats cents as USD in es-EC style, e.g. 1250 -> "$12,50". */
+/**
+ * Formats cents as USD deterministically with integer and string arithmetic
+ * (never Intl, so output is independent of runtime ICU data): US-style
+ * "." decimals and "," thousands grouping, e.g. 1250 -> "$12.50",
+ * 123456789 -> "$1,234,567.89". This matches how USD amounts are written in
+ * Ecuador.
+ */
 export function formatUsd(value: Cents): string {
   if (!isCents(value)) {
     throw new TypeError(`formatUsd: expected non-negative safe integer cents, got ${String(value)}`);
   }
-  return usdFormatter.format(value / 100);
+  const whole = Math.floor(value / 100);
+  const fraction = String(value % 100).padStart(2, "0");
+  const wholeWithGrouping = String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `$${wholeWithGrouping}.${fraction}`;
 }
