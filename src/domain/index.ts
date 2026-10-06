@@ -36,3 +36,37 @@ export {
   type TaxErrorCode,
   type DatedVatRate,
 } from "./tax";
+
+export {
+  isSpeciesAvailable,
+  findCurrentSeason,
+  nextSeasonStart,
+  SeasonError,
+  type SeasonWindow,
+  type SeasonErrorCode,
+} from "./season";
+
+export {
+  parseShipmentWindow,
+  canOrder,
+  shipmentPhase,
+  ShipmentError,
+  type ShipmentWindow,
+  type ShipmentPhase,
+  type ShipmentErrorCode,
+} from "./shipment";
+
+export {
+  canReserve,
+  reserve,
+  release,
+  closeLot,
+  availableGrams,
+  canFulfillOrder,
+  LotError,
+  type LotState,
+  type LotStatus,
+  type LotErrorCode,
+  type RejectionReason,
+  type CanFulfillOrderOptions,
+} from "./lot";
