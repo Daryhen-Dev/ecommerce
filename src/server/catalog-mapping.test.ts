@@ -74,6 +74,7 @@ function species(overrides: Partial<SpeciesRow> = {}): SpeciesRow {
     description: null,
     pricePerKgCents: 1000,
     discountPolicy: "GLOBAL",
+    vatCategory: "STANDARD",
     minOrderGrams: 1000,
     orderStepGrams: 500,
     isSeasonal: false,
@@ -273,7 +274,10 @@ describe("mapCatalogItems availability", () => {
         lot({ speciesId: "species-1", totalGrams: 10_000, reservedGrams: 9_100 }),
       ],
     });
-    expect(itemBySlug(items, "tuna").availability).toEqual({ state: "SOLD_OUT" });
+    expect(itemBySlug(items, "tuna").availability).toEqual({
+      state: "SOLD_OUT",
+      availableGrams: 900,
+    });
   });
 
   it("reports SOLD_OUT when there are no OPEN lots at all", () => {
@@ -282,7 +286,22 @@ describe("mapCatalogItems availability", () => {
       species: [sp],
       lots: [lot({ speciesId: "species-1", status: "CLOSED" })],
     });
-    expect(itemBySlug(items, "tuna").availability).toEqual({ state: "SOLD_OUT" });
+    expect(itemBySlug(items, "tuna").availability).toEqual({
+      state: "SOLD_OUT",
+      availableGrams: 0,
+    });
+  });
+
+  it("carries the remaining grams into SOLD_OUT so the cart can report them", () => {
+    const sp = species({ id: "species-1", slug: "tuna" });
+    const { items } = catalogOf({
+      species: [sp],
+      lots: [lot({ speciesId: "species-1", totalGrams: 800 })],
+    });
+    expect(itemBySlug(items, "tuna").availability).toEqual({
+      state: "SOLD_OUT",
+      availableGrams: 800,
+    });
   });
 
   it("reports OUT_OF_SEASON with the next season start for a seasonal species outside every window", () => {
@@ -440,6 +459,14 @@ describe("mapCatalogItems tiers", () => {
       orderStepGrams: 500,
       discountPolicy: "GLOBAL",
     });
+  });
+
+  it("carries the species VAT category into the catalog item", () => {
+    const standard = species({ id: "species-1", slug: "snapper", vatCategory: "STANDARD" });
+    const zeroRated = species({ id: "species-2", slug: "sea-cucumber", vatCategory: "ZERO_RATED" });
+    const items = catalogOf({ species: [standard, zeroRated] });
+    expect(itemBySlug(items, "snapper").vatCategory).toBe("STANDARD");
+    expect(itemBySlug(items, "sea-cucumber").vatCategory).toBe("ZERO_RATED");
   });
 });
 
