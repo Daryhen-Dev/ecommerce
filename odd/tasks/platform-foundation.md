@@ -150,8 +150,10 @@ validation.
       migrations (CRLF caused a Prisma checksum mismatch on Windows; dev DB
       checksum metadata was repaired by the worker, no schema/data change);
       seed no longer rewrites existing tax rows (append-only). Native review:
-      **pending** — START returned an expired consent binding twice without
-      reaching the human; awaiting owner decision.
+      approved and acknowledged (`review-cbabcb5b70df8cb8`, medium,
+      reliability; covers T3b + T3c + docs since 98780bd; 3 advisory
+      findings: CHECK/formula coupling, nonempty-table migration warning,
+      seed rate immutability note).
 - [ ] T4 — Domain: season availability (pre-sale only inside the window) and
       shipment ordering window (cutoff before departure, per-city). TDD.
       Route: delegated.
@@ -193,5 +195,4 @@ validation.
 
 ## Next step
 
-Owner decision on the T3b native review; then PR #3: T4 — season
-availability + shipment window (TDD).
+PR #3: T4 — season availability + shipment ordering window (TDD).
