@@ -154,9 +154,17 @@ validation.
       reliability; covers T3b + T3c + docs since 98780bd; 3 advisory
       findings: CHECK/formula coupling, nonempty-table migration warning,
       seed rate immutability note).
-- [ ] T4 — Domain: season availability (pre-sale only inside the window) and
+- [x] T4 — Domain: season availability (pre-sale only inside the window) and
       shipment ordering window (cutoff before departure, per-city). TDD.
-      Route: delegated.
+      Route: delegated. Commit `b69cbf2`. TDD RED→GREEN (season, shipment,
+      barrel); 127 tests total; lint/typecheck/build pass; independent
+      gentle-ai-verify pass (36 semantic probes). Native review: medium,
+      reliability, approved and acknowledged (`review-1aa752034b30a27d`);
+      2 advisory findings (shipmentPhase precedence warning,
+      species input shape suggestion). Documented product choices:
+      overlapping seasons → latest startsAt wins; phase between arrival and
+      pickupStartsAt → PICKUP; pickupEndsAt before arrival allowed (flagged
+      as possible future invariant).
 - [ ] T5 — Domain: lot reservation (available kg per lot, no overselling,
       min/step order validation). TDD. Route: delegated.
 
@@ -195,4 +203,4 @@ validation.
 
 ## Next step
 
-PR #3: T4 — season availability + shipment ordering window (TDD).
+T5 — lot reservation (no overselling, min/step order validation), TDD.
