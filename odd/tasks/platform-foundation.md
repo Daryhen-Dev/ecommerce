@@ -23,7 +23,10 @@ build on verified rules.
 - **Customer picks up at the destination airport.** Cold chain ends at the
   airport; the airport dispatches cargo (no storage), so pickup is the
   customer's sole responsibility.
-- Sold **per kilogram**, decimals allowed (e.g. 7.5 kg). Customer pays the
+- Sold **per kilogram**, decimals allowed (e.g. 7.5 kg). **Number standard
+  (owner, 2025-10-05): `.` is the only decimal separator**, in input and in
+  display (e.g. `7.5 kg`, `$12.50`); `,` is not accepted as a decimal
+  separator. Customer pays the
   **full amount upfront** and waits for the shipment.
 - Real weight may differ by about ±2–3 lb (~±1.4 kg); the business absorbs it.
   **No post-weighing price adjustment or refund.**
@@ -86,8 +89,15 @@ validation.
   - PR 2: T3 + T3b (pricing domain + configurable VAT schema)
   - PR 3: T4 + T5 (season/shipment windows + lot reservation)
 - Running count: 272 (T1) + 401 (T2) + 1,062 (T3) = 1,735, lockfile and
-  migration SQL excluded. PR 1 slice = `d4679ec..bb4e242`. PR 2 slice =
-  `bf463d2..` (T3 + T3b).
+  migration SQL excluded.
+- Remote: GitHub `Daryhen-Dev/ecommerce` (public). Owner chose an empty root
+  commit on `main` (`2c3dd69`) and the local history was rebased onto it
+  (tree unchanged, `b3adbe7`); commit ids below are the rebased ones.
+  - PR #1 `feat/platform-foundation-01-setup` → `main`: `c640071..a643bdc`
+    (T1 + T2), 1,019 authored lines, size exception noted.
+  - PR #2 (draft) `feat/platform-foundation-02-pricing` → PR #1 branch:
+    `ee9c62d..` (T3 + T3b + decimal standard).
+  - PR #3: T4 + T5, branch from PR #2.
 
 ## Tasks
 
@@ -119,6 +129,15 @@ validation.
       and acknowledged (`review-e3b59cd431b36bc5`). 1,062 authored lines
       (about 60% tests) — exceeds the 400 heuristic because each money rule
       carries concrete-number tests; not split.
+- [x] T3c — Domain: decimal standard `.` — `parseKilograms` rejects `,`;
+      `formatUsd` / `formatKilograms` output `.` decimals (`$12.50`,
+      `7.5 kg`) independent of runtime ICU. TDD. Route: delegated (multi-file
+      write rule: money + weight modules and tests). Commit `9226811`. RED
+      (8 failing) → GREEN 58 tests; lint/typecheck/build pass; independent
+      verify pass (29 probes). Native review: medium, reliability, approved
+      and acknowledged (`review-6d0ab5a9039afcf5`); 1 advisory warning at
+      `weight.ts:35` (kg regex accepts unbounded leading digits; huge values
+      are rejected only by the `grams` safe-integer guard).
 - [ ] T3b — Schema: configurable effective-dated VAT (`tax_rate` table:
       category, rate bps, effective from; species `vat_category` replaces
       `vat_rate_bps`); seed STANDARD 15% and ZERO_RATED 0%; orders keep the
@@ -137,7 +156,9 @@ validation.
 
 ## Progress / evidence
 
-- Branch: `feat/platform-foundation`.
+- Branch: stacked chain (see Delivery). Pre-rebase ids in task lines map to:
+  d4679ec→c640071, 7dd5300→4d7da03, 1663c54→ce8fcde, bb4e242→a643bdc,
+  bf463d2→ee9c62d, c8923be→98780bd.
 - T1: `d4679ec` chore: scaffold Next.js 16 app with TypeScript, ESLint and
   Vitest. Versions: next 16.3.8, react 19.2.8, typescript 5.9.3, vitest 5.0.3.
 - T2: `1663c54` feat(db). Versions: prisma/@prisma/client/@prisma/adapter-pg
@@ -156,9 +177,8 @@ validation.
 - `formatUsd`/`formatKilograms`: output depends on runtime ICU data; pin or
   test in CI on the deploy runtime.
 - Pricing validation: reject `null` elements inside tier arrays explicitly.
-- UI kg input: `"1,000"` / `"1.000"` parse as 1 kg (decimal), never as
-  thousands; the storefront input must make the decimal separator
-  unambiguous.
+- Storefront kg input must accept only `.` as decimal separator (domain
+  enforces it from T3c on).
 
 ## Next step
 
