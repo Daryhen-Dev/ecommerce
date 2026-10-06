@@ -74,9 +74,9 @@ validates them end to end in a real browser.
   - PR S-1 `feat/storefront-01-e2e-demo`: S1 + S2
   - PR S-2 `feat/storefront-02-catalog`: S3
   - PR S-3 `feat/storefront-03-cart`: S4 + S5
-- Running count: 616 (S1) + 1,090 (S2) + 599 (S3) = 2,305, lockfile
-  excluded. PR S-1 = #4 (S1 + S2). PR S-2 `feat/storefront-02-catalog` =
-  `f6eaa14` (S3).
+- Running count: 616 (S1) + 1,090 (S2) + 599 (S3) + 2,545 (S4) = 4,850,
+  lockfile excluded. PR S-1 = #4 (S1 + S2). PR S-2 = #5 (S3). PR S-3
+  `feat/storefront-03-cart` = `55154c3..` (S4 + S5).
 
 ## Tasks
 
@@ -119,10 +119,24 @@ validates them end to end in a real browser.
       (`review-c6c9dba12a06fa73`); 2 E2E robustness warnings (demo-data
       coupled assertions), 1 test suggestion. Parent fixed demo copy
       ("seasonal" → "de temporada").
-- [ ] S4 — Cart: client cart per shipment (localStorage), kg input with `.`
+- [x] S4 — Cart: client cart per shipment (localStorage), kg input with `.`
       only + min/step + max available, server action re-quoting with
       `priceOrder`, summary page with subtotal/discount/VAT/total and a
       disabled "Ir a pagar". TDD for cart logic. Route: delegated.
+      Commit `55154c3`. Resumed after an interrupted writer session: the
+      partial tree was reconciled against the spec (6 deviations fixed:
+      duplicate merge, 20-line cap, line error codes, quote shape, pricing
+      valid lines when others fail, single request instant). TDD RED (16
+      failing) → GREEN 239 unit; 27 E2E incl. 12 cart flows; axe 0. Parent
+      fixed the per-line "Subtotal sin IVA" column (showed pre-discount
+      gross, so rows did not add up) and added row assertions. Independent
+      gentle-ai-verify: server authority, malicious payload probes,
+      hand-computed mixed cart, keyboard Enter/Space, corrupted
+      localStorage. Native review: medium, reliability, approved and
+      acknowledged (`review-e034974802fc81e6`); 5 advisory suggestions.
+      Choices: totals hidden while any line has an error; SOLD_OUT reported
+      as INSUFFICIENT_AVAILABLE with availableGrams; extra INVALID_INPUT
+      order code. 2,545 authored lines (tests included).
 - [ ] S5 — E2E flows: pick Quito → add 7.5 kg → totals match `priceOrder`;
       seasonal species out of season not addable; invalid kg input errors;
       keyboard-only path; axe on each page. Route: delegated.
@@ -152,4 +166,5 @@ validates them end to end in a real browser.
 
 ## Next step
 
-PR S-2 open, then S4 — cart (branch `feat/storefront-03-cart`).
+S5 — remaining E2E: keyboard-only path spec, out-of-season species not
+addable, axe on every page; then open PR S-3.
