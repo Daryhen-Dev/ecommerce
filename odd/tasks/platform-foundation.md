@@ -165,8 +165,15 @@ validation.
       overlapping seasons → latest startsAt wins; phase between arrival and
       pickupStartsAt → PICKUP; pickupEndsAt before arrival allowed (flagged
       as possible future invariant).
-- [ ] T5 — Domain: lot reservation (available kg per lot, no overselling,
-      min/step order validation). TDD. Route: delegated.
+- [x] T5 — Domain: lot reservation (available kg per lot, no overselling,
+      min/step order validation). TDD. Route: delegated. Commit `d6b3211`.
+      TDD RED→GREEN; 159 tests total; lint/typecheck/build pass; independent
+      gentle-ai-verify pass (56 probes). Native review: medium, reliability,
+      approved and acknowledged (`review-a3ee72ef232f6725`); 2 advisory
+      suggestions on `canFulfillOrder` boundary and test coverage of the
+      invalid min/step branch. Documented choices: release on a CLOSED lot
+      is allowed (cancelled orders); `canReserve` returns false instead of
+      throwing; step anchored to `(grams − min) % step`.
 
 ## Acceptance criteria
 
@@ -203,4 +210,5 @@ validation.
 
 ## Next step
 
-T5 — lot reservation (no overselling, min/step order validation), TDD.
+Feature complete. Close: PR #3 body update + owner decides merges/next
+feature.
