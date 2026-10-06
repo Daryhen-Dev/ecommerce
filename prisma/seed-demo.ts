@@ -143,7 +143,7 @@ const DEMO_SPECIES: SpeciesSpec[] = [
     slug: "mahi-mahi",
     name: "Dorado",
     description:
-      "Dorado fresco de carne firme y dulce. Especie seasonal: vuelve con la próxima temporada.",
+      "Dorado fresco de carne firme y dulce. Especie de temporada: vuelve con la próxima temporada.",
     pricePerKgCents: 1000,
     discountPolicy: "GLOBAL",
     isSeasonal: true,
