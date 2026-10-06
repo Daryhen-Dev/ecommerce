@@ -27,6 +27,13 @@ describe("domain module", () => {
     expect(typeof domain.shipmentPhase).toBe("function");
     expect(typeof domain.parseShipmentWindow).toBe("function");
     expect(domain.ShipmentError).toBeInstanceOf(Function);
+    expect(typeof domain.canReserve).toBe("function");
+    expect(typeof domain.reserve).toBe("function");
+    expect(typeof domain.release).toBe("function");
+    expect(typeof domain.closeLot).toBe("function");
+    expect(typeof domain.availableGrams).toBe("function");
+    expect(typeof domain.canFulfillOrder).toBe("function");
+    expect(domain.LotError).toBeInstanceOf(Function);
   });
 
   it("prices a small order end to end through the barrel", () => {

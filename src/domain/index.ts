@@ -55,3 +55,18 @@ export {
   type ShipmentPhase,
   type ShipmentErrorCode,
 } from "./shipment";
+
+export {
+  canReserve,
+  reserve,
+  release,
+  closeLot,
+  availableGrams,
+  canFulfillOrder,
+  LotError,
+  type LotState,
+  type LotStatus,
+  type LotErrorCode,
+  type RejectionReason,
+  type CanFulfillOrderOptions,
+} from "./lot";
