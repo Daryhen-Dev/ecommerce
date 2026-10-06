@@ -74,9 +74,10 @@ validates them end to end in a real browser.
   - PR S-1 `feat/storefront-01-e2e-demo`: S1 + S2
   - PR S-2 `feat/storefront-02-catalog`: S3
   - PR S-3 `feat/storefront-03-cart`: S4 + S5
-- Running count: 616 (S1) + 1,090 (S2) + 599 (S3) + 2,545 (S4) = 4,850,
-  lockfile excluded. PR S-1 = #4 (S1 + S2). PR S-2 = #5 (S3). PR S-3
-  `feat/storefront-03-cart` = `55154c3..` (S4 + S5).
+- Running count: 616 (S1) + 1,090 (S2) + 599 (S3) + 2,545 (S4) + 749 (S5)
+  = 5,599, lockfile excluded. PR S-1 = #4 (S1 + S2). PR S-2 = #5 (S3).
+  PR S-3 `feat/storefront-03-cart` = `55154c3..0c5b4b4` + docs (S4 + S5),
+  size exception.
 
 ## Tasks
 
@@ -137,9 +138,21 @@ validates them end to end in a real browser.
       Choices: totals hidden while any line has an error; SOLD_OUT reported
       as INSUFFICIENT_AVAILABLE with availableGrams; extra INVALID_INPUT
       order code. 2,545 authored lines (tests included).
-- [ ] S5 — E2E flows: pick Quito → add 7.5 kg → totals match `priceOrder`;
+- [x] S5 — E2E flows: pick Quito → add 7.5 kg → totals match `priceOrder`;
       seasonal species out of season not addable; invalid kg input errors;
       keyboard-only path; axe on each page. Route: delegated.
+      Commit `0c5b4b4`. New specs: keyboard (mouse-free journey,
+      focus-visible), availability (Dorado not addable; tampered cart with
+      out-of-season / unknown slug rejected, totals hidden), pages (axe on
+      /gye, /cue, empty cart; 375px responsive). Keyboard and availability
+      passed on first run (characterization, not RED); responsive spec was
+      RED and exposed a real defect — cart table caused page horizontal
+      scroll at 375px; fixed with a labelled, keyboard-reachable
+      `overflow-x-auto` region. Demo values centralized in
+      `e2e/support/demo.ts` (closes the demo-coupling follow-up). 36 E2E
+      passed twice (no flakes), 239 unit; independent gentle-ai-verify.
+      Native review: medium, reliability, approved and acknowledged
+      (`review-3cc3ebeef78be37b`); 3 advisory suggestions.
 
 ## Acceptance criteria
 
@@ -161,10 +174,12 @@ validates them end to end in a real browser.
 - `db.ts` throws at import time when `DATABASE_URL` is missing (by design;
   revisit if a page should degrade instead).
 
-- E2E catalog specs assert demo values (flight numbers, kg); make them
-  derive from seeded constants or tolerate re-seeding drift.
+- ~~E2E catalog specs assert demo values~~ — centralized in
+  `e2e/support/demo.ts` (S5).
+- SOLD_OUT add-to-cart path not covered by E2E (demo has no orderable
+  species at 0 kg); unit-covered in catalog mapping and quote.
 
 ## Next step
 
-S5 — remaining E2E: keyboard-only path spec, out-of-season species not
-addable, axe on every page; then open PR S-3.
+Feature complete. Open PR S-3; owner decides merge order and the next
+feature (admin panel for the cooperative, checkout/payment).
