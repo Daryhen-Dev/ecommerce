@@ -34,12 +34,47 @@ const GLOBAL_DISCOUNT_TIERS = [
   { minTotalGrams: 10000, discountBps: 1000 },
 ] as const;
 
+// PLACEHOLDER VALUES for the owner to confirm with the accountant:
+// effective-dated VAT rates per category. The tax_rate table is append-only
+// history; a future rate change is seeded as a NEW row with a new
+// effectiveFrom, never an edit of an existing row. The applicable rate at
+// instant T is the row with the greatest effectiveFrom <= T.
+const TAX_RATES = [
+  {
+    category: "STANDARD" as const,
+    rateBps: 1500,
+    effectiveFrom: new Date("2024-04-01T00:00:00-05:00"),
+    note: "Ecuador IVA general 15% (verify with accountant)",
+  },
+  {
+    category: "ZERO_RATED" as const,
+    rateBps: 0,
+    effectiveFrom: new Date("2000-01-01T00:00:00-05:00"),
+    note: "Tarifa 0%",
+  },
+] as const;
+
 async function main(): Promise<void> {
   for (const airport of AIRPORTS) {
     await db.airport.upsert({
       where: { code: airport.code },
       update: { city: airport.city, name: airport.name },
       create: airport,
+    });
+  }
+
+  for (const rate of TAX_RATES) {
+    await db.taxRate.upsert({
+      where: {
+        category_effectiveFrom: {
+          category: rate.category,
+          effectiveFrom: rate.effectiveFrom,
+        },
+      },
+      // Append-only history: never rewrite an existing rate row. A rate change
+      // is a new TAX_RATES entry with a new effectiveFrom.
+      update: {},
+      create: { ...rate },
     });
   }
 

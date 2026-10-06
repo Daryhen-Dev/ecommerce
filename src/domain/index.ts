@@ -29,3 +29,10 @@ export {
   type PricedOrder,
   type PricingErrorCode,
 } from "./pricing";
+
+export {
+  resolveVatRates,
+  TaxError,
+  type TaxErrorCode,
+  type DatedVatRate,
+} from "./tax";

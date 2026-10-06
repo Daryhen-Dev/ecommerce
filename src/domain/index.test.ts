@@ -17,6 +17,8 @@ describe("domain module", () => {
     expect(typeof domain.formatKilograms).toBe("function");
     expect(typeof domain.priceOrder).toBe("function");
     expect(domain.PricingError).toBeInstanceOf(Function);
+    expect(typeof domain.resolveVatRates).toBe("function");
+    expect(domain.TaxError).toBeInstanceOf(Function);
   });
 
   it("prices a small order end to end through the barrel", () => {

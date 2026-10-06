@@ -1,0 +1,4 @@
+# Prisma checksums migration files byte-for-byte; keep them LF on every OS
+# so core.autocrlf cannot cause checksum drift.
+prisma/migrations/**/*.sql text eol=lf
+prisma/migrations/migration_lock.toml text eol=lf
