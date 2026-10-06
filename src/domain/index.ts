@@ -36,3 +36,22 @@ export {
   type TaxErrorCode,
   type DatedVatRate,
 } from "./tax";
+
+export {
+  isSpeciesAvailable,
+  findCurrentSeason,
+  nextSeasonStart,
+  SeasonError,
+  type SeasonWindow,
+  type SeasonErrorCode,
+} from "./season";
+
+export {
+  parseShipmentWindow,
+  canOrder,
+  shipmentPhase,
+  ShipmentError,
+  type ShipmentWindow,
+  type ShipmentPhase,
+  type ShipmentErrorCode,
+} from "./shipment";

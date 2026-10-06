@@ -6,7 +6,7 @@ describe("domain module", () => {
     expect(domain).toBeDefined();
   });
 
-  it("re-exports the money, weight and pricing public API", () => {
+  it("re-exports the money, weight, pricing, tax, season and shipment public API", () => {
     expect(typeof domain.cents).toBe("function");
     expect(typeof domain.isCents).toBe("function");
     expect(typeof domain.percentOf).toBe("function");
@@ -19,6 +19,14 @@ describe("domain module", () => {
     expect(domain.PricingError).toBeInstanceOf(Function);
     expect(typeof domain.resolveVatRates).toBe("function");
     expect(domain.TaxError).toBeInstanceOf(Function);
+    expect(typeof domain.isSpeciesAvailable).toBe("function");
+    expect(typeof domain.findCurrentSeason).toBe("function");
+    expect(typeof domain.nextSeasonStart).toBe("function");
+    expect(domain.SeasonError).toBeInstanceOf(Function);
+    expect(typeof domain.canOrder).toBe("function");
+    expect(typeof domain.shipmentPhase).toBe("function");
+    expect(typeof domain.parseShipmentWindow).toBe("function");
+    expect(domain.ShipmentError).toBeInstanceOf(Function);
   });
 
   it("prices a small order end to end through the barrel", () => {
