@@ -74,7 +74,8 @@ validates them end to end in a real browser.
   - PR S-1 `feat/storefront-01-e2e-demo`: S1 + S2
   - PR S-2 `feat/storefront-02-catalog`: S3
   - PR S-3 `feat/storefront-03-cart`: S4 + S5
-- Running count: 616 (S1, lockfile excluded).
+- Running count: 616 (S1) + 1,090 (S2) = 1,706, lockfile excluded. PR S-1
+  slice = `d526465..` (S1 + S2), size exception (S1 tooling + S2 tests).
 
 ## Tasks
 
@@ -91,10 +92,20 @@ validates them end to end in a real browser.
       reliability, approved and acknowledged (`review-7118a6de52b3f748`); 3
       advisory suggestions. Note: demo seed replaces all seasons/custom tiers
       of demo species (only lots/shipments carry the DEMO marker).
-- [ ] S2 — Catalog read service (`src/server/catalog.ts`): orderable
+- [x] S2 — Catalog read service (`src/server/catalog.ts`): orderable
       shipments per airport, species availability for a shipment (season,
       OPEN lots available kg, price, tiers), mapping logic pure and
       unit-tested (TDD), thin Prisma queries. Route: delegated.
+      Commit `f2d8422`. TDD RED→GREEN; 27 new tests (186 total);
+      lint/typecheck/build/test:e2e pass; integration against demo data
+      matches expectations (DEMO-UIO-1, lobster 25 kg, mahi-mahi out of
+      season, grouper 60 kg, tuna 200 kg) — independent gentle-ai-verify.
+      5 queries per city catalog. Native review: medium, reliability,
+      approved and acknowledged (`review-02116c18114264c3`); 4 advisory
+      findings (locale ordering, no service-layer test, unbounded lot
+      query). 1,090 authored lines (55% tests).
+      Choices: remainder below species minimum → SOLD_OUT; inactive
+      airport → 404; codes uppercase-normalized, no trim.
 - [ ] S3 — Pages: city picker (`/`), city catalog (`/[airport]`) with next
       flight card (cutoff, departure, pickup window in Ecuador time) and
       species cards (price/kg, available kg, tiers, season state), empty
@@ -118,6 +129,15 @@ validates them end to end in a real browser.
 
 - Branch: `feat/storefront-01-e2e-demo` from `1fff8bb`.
 
+## Follow-ups (non-blocking review findings)
+
+- Catalog: pin collation for `localeCompare` or move ordering to SQL;
+  bound the OPEN-lot query (e.g. by species/active) when data grows;
+  add a service-layer integration test (opt-in, DB required).
+- Demo seed: seasons/custom tiers of demo species are replaced wholesale.
+- `db.ts` throws at import time when `DATABASE_URL` is missing (by design;
+  revisit if a page should degrade instead).
+
 ## Next step
 
-S2 — catalog read service.
+Push PR S-1, then S3 — pages.
