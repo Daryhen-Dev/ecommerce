@@ -138,10 +138,20 @@ validation.
       and acknowledged (`review-6d0ab5a9039afcf5`); 1 advisory warning at
       `weight.ts:35` (kg regex accepts unbounded leading digits; huge values
       are rejected only by the `grams` safe-integer guard).
-- [ ] T3b — Schema: configurable effective-dated VAT (`tax_rate` table:
+- [x] T3b — Schema: configurable effective-dated VAT (`tax_rate` table:
       category, rate bps, effective from; species `vat_category` replaces
       `vat_rate_bps`); seed STANDARD 15% and ZERO_RATED 0%; orders keep the
       locked rate per line. New migration. Route: delegated.
+      Commit `9a4c4fb` (migrations `configurable_vat` +
+      `configurable_vat_checks`). TDD RED→GREEN for `resolveVatRates`; 73
+      tests; validate, migrate status, fresh deploy, seed x2, CHECK proofs
+      (order/line total formulas, rate range, duplicate rate) by worker and
+      independent gentle-ai-verify. Parent: `.gitattributes` forces LF on
+      migrations (CRLF caused a Prisma checksum mismatch on Windows; dev DB
+      checksum metadata was repaired by the worker, no schema/data change);
+      seed no longer rewrites existing tax rows (append-only). Native review:
+      **pending** — START returned an expired consent binding twice without
+      reaching the human; awaiting owner decision.
 - [ ] T4 — Domain: season availability (pre-sale only inside the window) and
       shipment ordering window (cutoff before departure, per-city). TDD.
       Route: delegated.
@@ -168,8 +178,9 @@ validation.
 ## Follow-ups (non-blocking review findings, not yet scheduled)
 
 - `src/lib/db.ts`: fail fast with a clear error when `DATABASE_URL` is unset.
-- Add CHECK constraints on `orders` totals (non-negative, total = subtotal −
-  discount + VAT) once T3 fixes the pricing formula.
+- ~~Add CHECK constraints on `orders` totals~~ — done in T3b (`9a4c4fb`).
+- `tax_rate` append-only is convention + seed only; consider a DB trigger
+  that blocks UPDATE/DELETE.
 - Integration test for migration + seed (opt-in, outside the default run).
 - Add `server-only` guard to `src/lib/db.ts` when the first UI imports it.
 - `grossOf`/`percentOf`: guard the intermediate product with
@@ -182,4 +193,5 @@ validation.
 
 ## Next step
 
-T3b — configurable effective-dated VAT schema.
+Owner decision on the T3b native review; then PR #3: T4 — season
+availability + shipment window (TDD).
