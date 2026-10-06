@@ -250,7 +250,16 @@ export default function CartView({
 
   return (
     <div className="mt-8">
-      <table className="mt-4 w-full border-collapse text-sm">
+      {/* The quote table has 8 columns and cannot shrink to a phone width:
+          it scrolls horizontally inside this labelled region instead of
+          stretching the page. Focusable so keyboard users can scroll it. */}
+      <div
+        role="region"
+        aria-label="Líneas de tu carrito"
+        tabIndex={0}
+        className="relative mt-4 overflow-x-auto rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+      <table className="w-full min-w-max border-collapse text-sm">
         <caption className="sr-only">Líneas de tu carrito</caption>
         <thead>
           <tr className="border-b border-neutral-300 text-left">
@@ -356,6 +365,7 @@ export default function CartView({
           })}
         </tbody>
       </table>
+      </div>
 
       {quoteLoading && (
         <p aria-live="polite" className="mt-4 text-neutral-700">

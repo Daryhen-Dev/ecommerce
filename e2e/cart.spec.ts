@@ -2,111 +2,19 @@
 // fresh relative dates BEFORE running:
 //   pnpm db:seed && pnpm db:seed:demo
 //
-// The expected totals are computed here from the demo constants with the same
-// integer formulas the domain uses (round half up), never hardcoded guesses:
-// Pargo $12.00/kg, CUSTOM tiers 0/3000 g -> 3%, 8000 g -> 8%; Atún aleta
-// amarilla $11.00/kg, GLOBAL tiers 0/5000 g -> 5%, 10000 g -> 10%; VAT 15%.
-import { test, expect, type Page } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+// The expected totals are computed in e2e/support/demo.ts from the demo
+// constants with the same integer formulas the domain uses (round half up),
+// never hardcoded guesses: Pargo $12.00/kg, CUSTOM tiers 0/3000 g -> 3%,
+// 8000 g -> 8%; Atún aleta amarilla $11.00/kg, GLOBAL tiers 0/5000 g -> 5%,
+// 10000 g -> 10%; VAT 15%.
+import { test, expect } from "@playwright/test";
 
-// --- demo constants (must mirror prisma/seed-demo.ts and prisma/seed.ts) ---
-const SNAPPER_PRICE_PER_KG_CENTS = 1200;
-const SNAPPER_TIERS: [number, number][] = [
-  [0, 0],
-  [3000, 300],
-  [8000, 800],
-];
-const TUNA_PRICE_PER_KG_CENTS = 1100;
-const TUNA_TIERS: [number, number][] = [
-  [0, 0],
-  [5000, 500],
-  [10000, 1000],
-];
-const VAT_BPS = 1500;
+import { SPECIES, SNAPPER_TIERS, TUNA_TIERS, totalsOf } from "./support/demo";
+import { addToCart, articleOf, openCartWithItems } from "./support/cart";
+import { expectNoSeriousAxeViolations } from "./support/axe";
 
-// --- domain formulas (integer arithmetic, round half up) ---
-function grossCentsOf(grams: number, pricePerKgCents: number): number {
-  return Math.floor((grams * pricePerKgCents + 500) / 1000);
-}
-function percentOf(amount: number, bps: number): number {
-  return Math.floor((amount * bps + 5000) / 10000);
-}
-function tierBps(tiers: [number, number][], totalGrams: number): number {
-  let bps = 0;
-  for (const [minTotalGrams, tierBps] of tiers) {
-    if (minTotalGrams <= totalGrams) bps = tierBps;
-  }
-  return bps;
-}
-function formatUsd(cents: number): string {
-  const whole = Math.floor(cents / 100);
-  const fraction = String(cents % 100).padStart(2, "0");
-  const grouped = String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `$${grouped}.${fraction}`;
-}
-
-interface LineQuote {
-  gross: number;
-  discount: number;
-  vat: number;
-  total: number;
-}
-
-/** Expected per-line quote: tiers are selected by the cart's TOTAL grams. */
-function lineQuoteOf(
-  grams: number,
-  pricePerKgCents: number,
-  tiers: [number, number][],
-  cartTotalGrams: number,
-): LineQuote {
-  const gross = grossCentsOf(grams, pricePerKgCents);
-  const discount = percentOf(gross, tierBps(tiers, cartTotalGrams));
-  const net = gross - discount;
-  const vat = percentOf(net, VAT_BPS);
-  return { gross, discount, vat, total: net + vat };
-}
-
-/** Expected cart totals for lines priced together at their total grams. */
-function totalsOf(
-  lines: { grams: number; pricePerKgCents: number; tiers: [number, number][] }[],
-): { subtotal: string; discount: string; vat: string; total: string } {
-  const totalGrams = lines.reduce((acc, l) => acc + l.grams, 0);
-  const quotes = lines.map((l) => lineQuoteOf(l.grams, l.pricePerKgCents, l.tiers, totalGrams));
-  const subtotal = quotes.reduce((acc, q) => acc + q.gross, 0);
-  const discount = quotes.reduce((acc, q) => acc + q.discount, 0);
-  const vat = quotes.reduce((acc, q) => acc + q.vat, 0);
-  return {
-    subtotal: formatUsd(subtotal),
-    discount: formatUsd(discount),
-    vat: formatUsd(vat),
-    total: formatUsd(subtotal - discount + vat),
-  };
-}
-
-const SNAPPER_NAME = "Pargo";
-const TUNA_NAME = "Atún aleta amarilla";
-
-function articleOf(page: Page, name: string) {
-  return page.getByRole("article").filter({
-    has: page.getByRole("heading", { name, exact: true }),
-  });
-}
-
-async function addToCart(page: Page, name: string, kg: string) {
-  const article = articleOf(page, name);
-  await article.getByLabel("Cantidad (kg)").fill(kg);
-  await article.getByRole("button", { name: "Agregar al carrito" }).click();
-}
-
-async function openCartWithItems(page: Page, items: { name: string; kg: string }[]) {
-  await page.goto("/uio");
-  for (const item of items) {
-    await addToCart(page, item.name, item.kg);
-  }
-  await page.getByRole("link", { name: `Carrito (${items.length})` }).click();
-  await expect(page).toHaveURL(/\/uio\/carrito$/);
-  await expect(page.getByRole("region", { name: "Totales" })).toBeVisible();
-}
+const SNAPPER_NAME = SPECIES.snapper.name;
+const TUNA_NAME = SPECIES.tuna.name;
 
 test.describe("add to cart (/uio)", () => {
   test("shows the decimal-separator hint on every quantity input", async ({ page }) => {
@@ -168,14 +76,7 @@ test.describe("add to cart (/uio)", () => {
 
   test("passes axe with the add-to-cart forms", async ({ page }) => {
     await page.goto("/uio");
-    const results = await new AxeBuilder({ page }).analyze();
-    const blocking = results.violations.filter(
-      (violation) => violation.impact === "serious" || violation.impact === "critical",
-    );
-    if (blocking.length > 0) {
-      console.log(JSON.stringify(blocking, null, 2));
-    }
-    expect(blocking).toEqual([]);
+    await expectNoSeriousAxeViolations(page);
   });
 });
 
@@ -191,7 +92,7 @@ test.describe("cart page (/uio/carrito)", () => {
     await expect(line).toContainText("$12.00");
 
     const expected = totalsOf([
-      { grams: 7500, pricePerKgCents: SNAPPER_PRICE_PER_KG_CENTS, tiers: SNAPPER_TIERS },
+      { grams: 7500, pricePerKgCents: SPECIES.snapper.pricePerKgCents, tiers: SNAPPER_TIERS },
     ]);
     const totalsRegion = page.getByRole("region", { name: "Totales" });
     await expect(totalsRegion).toContainText(expected.subtotal);
@@ -231,8 +132,8 @@ test.describe("cart page (/uio/carrito)", () => {
     await expect(tunaRow).toContainText("$29.70");
 
     const expected = totalsOf([
-      { grams: 7500, pricePerKgCents: SNAPPER_PRICE_PER_KG_CENTS, tiers: SNAPPER_TIERS },
-      { grams: 3000, pricePerKgCents: TUNA_PRICE_PER_KG_CENTS, tiers: TUNA_TIERS },
+      { grams: 7500, pricePerKgCents: SPECIES.snapper.pricePerKgCents, tiers: SNAPPER_TIERS },
+      { grams: 3000, pricePerKgCents: SPECIES.tuna.pricePerKgCents, tiers: TUNA_TIERS },
     ]);
     const totalsRegion = page.getByRole("region", { name: "Totales" });
     await expect(totalsRegion).toContainText(expected.subtotal);
@@ -256,7 +157,7 @@ test.describe("cart page (/uio/carrito)", () => {
     // Atún alone is 3 kg: below the 5 kg global tier, so 0% discount.
     await expect(tunaRow).toContainText("0%");
     const expected = totalsOf([
-      { grams: 3000, pricePerKgCents: TUNA_PRICE_PER_KG_CENTS, tiers: TUNA_TIERS },
+      { grams: 3000, pricePerKgCents: SPECIES.tuna.pricePerKgCents, tiers: TUNA_TIERS },
     ]);
     const totalsRegion = page.getByRole("region", { name: "Totales" });
     await expect(totalsRegion).toContainText(expected.subtotal);
@@ -310,13 +211,6 @@ test.describe("cart page (/uio/carrito)", () => {
   test("passes axe with one line", async ({ page }) => {
     await openCartWithItems(page, [{ name: SNAPPER_NAME, kg: "7.5" }]);
 
-    const results = await new AxeBuilder({ page }).analyze();
-    const blocking = results.violations.filter(
-      (violation) => violation.impact === "serious" || violation.impact === "critical",
-    );
-    if (blocking.length > 0) {
-      console.log(JSON.stringify(blocking, null, 2));
-    }
-    expect(blocking).toEqual([]);
+    await expectNoSeriousAxeViolations(page);
   });
 });
