@@ -58,6 +58,47 @@ pnpm db:seed        # base seed first (airports, tiers, tax rates)
 pnpm db:seed:demo   # demo species, lots and flights (idempotent)
 ```
 
+## Admin panel
+
+The cooperative operates the marketplace from `/admin`: landings (lots),
+flights (shipments), species with prices and discount tiers, and the orders of
+each flight. This first version ships authentication and the panel shell; the
+sections are enabled as they land.
+
+The panel uses **one shared password** for the whole cooperative, not user
+accounts: a real account model arrives later with the customer accounts
+feature. Logging in sets a signed, HttpOnly session cookie (`admin_session`,
+12 hours); `/admin/**` is protected by middleware and by a session check in
+the admin layout, so a stale or forged cookie never reaches a page.
+
+### Environment variables
+
+| Variable         | Required | Purpose                                                       |
+| ---------------- | -------- | ------------------------------------------------------------- |
+| `ADMIN_PASSWORD` | yes      | Password typed on `/admin/login`.                             |
+| `AUTH_SECRET`    | yes      | Key that signs the session cookie (HMAC-SHA256).              |
+
+Both are documented in `.env.example`. Use a long random value for
+`AUTH_SECRET`, for example:
+
+```sh
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+With `AUTH_SECRET` missing the panel renders a configuration error instead of
+signing sessions; with `ADMIN_PASSWORD` missing every login fails with the
+usual "Contraseña incorrecta." message (the server logs the real reason).
+
+### Using it locally
+
+```sh
+pnpm dev      # with ADMIN_PASSWORD and AUTH_SECRET in .env
+```
+
+Open <http://localhost:3000/admin>, log in with `ADMIN_PASSWORD`, and use
+**Salir** to close the session. The password is single and shared for now:
+changing `ADMIN_PASSWORD` only affects new logins.
+
 ## E2E tests
 
 End-to-end tests run with Playwright (Chromium only) against a production
@@ -69,4 +110,7 @@ pnpm test:e2e                          # requires db:up + migrations + demo seed
 ```
 
 The Playwright server starts on port 3100 (`pnpm start --port 3100`), so it
-does not clash with a running `pnpm dev`.
+does not clash with a running `pnpm dev`. It receives `ADMIN_PASSWORD` and
+`AUTH_SECRET` from `playwright.config.ts` (defaults: `admin-demo-password` and
+`admin-demo-secret`), and the admin specs log in with those same values; export
+your own variables to override both at once.
