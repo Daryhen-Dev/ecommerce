@@ -72,15 +72,25 @@ SQL hands-on can operate the marketplace, so nothing real can be sold.
   - PR A-1 `feat/admin-01-foundation`: A1 + A2
   - PR A-2 `feat/admin-02-operation`: A3 + A4
   - PR A-3 `feat/admin-03-species-orders`: A5 + A6
-- Running count: 0.
+- Running count: 1,037 (A1, lockfile excluded).
 
 ## Tasks
 
-- [ ] A1 — Admin foundation: auth (login form at `/admin/login`, session
+- [x] A1 — Admin foundation: auth (login form at `/admin/login`, session
       cookie, middleware, logout, `ADMIN_PASSWORD`/`AUTH_SECRET` in
       `.env.example`, constant-time check unit-tested), admin layout with
       nav, empty dashboard page; E2E: unauthenticated redirect to login,
       wrong password rejected, login works. Route: delegated.
+      Commit `1086caf`. TDD RED→GREEN (16 auth unit tests, 255 total);
+      41 E2E incl. login flow + axe; independent gentle-ai-verify PASS.
+      Verifier caught a blocker the parent fixed before commit:
+      `.env.example` had real local values instead of the demo placeholders.
+      Native review: **unavailable** — review.start failed persistently with
+      a native `schema-incompatible` error (30+ attempts, multiple
+      idempotency keys and baseRef forms; no lineage created). Fallback per
+      RDD-off path: independent verifier ran. Retry native review later.
+      Note: `src/middleware.ts` uses Next 16's deprecated middleware
+      convention (build warning); migrate to `src/proxy.ts` later.
 - [ ] A2 — Shared admin server kit: form field parsing/validation helpers
       (kg→grams, USD→cents, datetime-local → Date in `America/Guayaquil`),
       action-result pattern, field-error rendering components; unit-tested.
@@ -119,6 +129,13 @@ SQL hands-on can operate the marketplace, so nothing real can be sold.
 
 - Branch: `feat/admin-01-foundation` from `7b74806`.
 
+## Follow-ups
+
+- Migrate `src/middleware.ts` to the `proxy` convention (Next 16 deprecation).
+- Unit tests for `safeRedirectPath` (open-redirect guard, currently code+
+  E2E only).
+- `safeRedirectPath` has no unit test yet; add with A2's test kit.
+
 ## Next step
 
-A1 — admin auth foundation.
+A2 — shared admin form/validation kit (TDD).
