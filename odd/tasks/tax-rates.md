@@ -51,25 +51,34 @@ file at a time — see `playwright.config.ts`). Per task: `pnpm lint`,
 
 ## Tasks
 
-- [ ] **T1** — Pure admin logic `src/lib/admin-tax.ts` + tests (RED first): form
+- [x] **T1** — Pure admin logic `src/lib/admin-tax.ts` + tests (RED first): form
   parser (category select, percentage, Ecuador `datetime-local`, optional note),
   the append-only date rule, the duplicate-date rule, Spanish messages, labels
   and the "rate in force vs scheduled" summary helper. Route: delegated.
-  Spec: S4, S5.
-- [ ] **T2** — Server layer `src/server/admin-tax.ts` (history per category,
+  Spec: S4, S5. Commit `c114e47`. RED first (module missing), then GREEN with
+  28 tests. Choices: the bps always come from `resolveVatRates` and the local
+  scan only identifies which stored row it resolved, so its date can be printed
+  (S4 asked for exactly that split); duplicate is reported before backdated,
+  because the same date violates both and the unique constraint is the one the
+  operator can see in the history; the note label is "texto de la nota" so the
+  shared parser's "El {label}" sentence stays grammatical.
+- [x] **T2** — Server layer `src/server/admin-tax.ts` (history per category,
   latest row per category, insert), `/admin/tax` page with the in-force table,
   the history table and the register form, the Server Action, and the fifth
   dashboard card. Updates `e2e/admin-auth.spec.ts` for the new link.
-  Route: delegated. Spec: S2, S3, S7.
-- [ ] **T3** — `e2e/admin-tax.spec.ts`: the in-force rate is 15% with its date;
+  Route: delegated. Spec: S2, S3, S7. Commit `b05c812`.
+- [x] **T3** — `e2e/admin-tax.spec.ts`: the in-force rate is 15% with its date;
   a backdated rate and a duplicate date are refused with the Spanish messages; a
   future-dated rate is stored and labelled scheduled while the in-force rate
   stays 15%; the storefront cart still quotes 15% (proving the quote reads the
   table, not a constant); axe on the page. `prisma/seed-demo.ts` purges the
   `E2E-tax-` rows so reruns are clean. Route: delegated. Spec: S1, S5, S6, S7.
-- [ ] **T4** — Docs: record evidence, the decision trail and the follow-ups
+  Commit `3279e96`. The spec writes only a future-dated rate: a rate in force
+  other than 15% would break the storefront specs that assert `VAT_BPS = 1500`
+  (`e2e/support/demo.ts`).
+- [x] **T4** — Docs: record evidence, the decision trail and the follow-ups
   (accountant confirmation of the 15%, and what a future-dated rate does to a
-  cart that is already open). Route: parent. Spec: all.
+  cart that is already open). Route: parent. Spec: all. This commit.
 
 ## Acceptance criteria
 
@@ -86,3 +95,43 @@ file at a time — see `playwright.config.ts`). Per task: `pnpm lint`,
 - **L2** (parent): the 9 stacked PRs were merged into `main` in order before
   this feature started; `main` was verified green there (403 unit, lint,
   typecheck) before branching.
+
+## Evidence
+
+- Gate: **431 unit** (28 new, TDD) + **65 E2E** (4 new), `pnpm lint`,
+  `pnpm typecheck` and `pnpm build` clean. Route `/admin/tax` is in the build.
+- Axe: 0 serious/critical on the page with and without a scheduled rate.
+
+### Live QA (production build, ego-browser)
+
+The one property the E2E can only prove indirectly is S6 — a live rate change
+moving the quote. Proven by hand, in both directions, through the real form and
+the real cart:
+
+| Step | Rate in force | Cart totals |
+| --- | --- | --- |
+| Start | `IVA estándar 15%` (1 abr 2024) | Subtotal $22.00 · IVA **$3.30** (15%) |
+| Register 16% | `IVA estándar 16%` (hoy 18:46), the 15% row becomes **Anterior** | Subtotal $44.00 · IVA **$7.04** (16%) |
+| Register 15% (append) | `IVA estándar 15%` (hoy 18:47), the 16% row becomes **Anterior** | Subtotal $66.00 · IVA **$9.41** (15%) |
+
+The history kept all three rows and nothing was edited: the restoration is a new
+row, which is the whole point of append-only. The demo seed then purged the two
+`E2E-tax-` rows and `tax_rate` is back to the two seeded rates.
+
+The no-backdating rule also proved itself by accident, which is the best kind of
+proof: the first attempt to register a rate dated 30 seconds ago was **refused**
+because a scheduled `E2E-tax-` row 30 days ahead existed for `STANDARD`. That is
+the rule working, not a bug — and it is why the seed purge matters for reruns.
+
+### Environment notes (not code defects)
+
+- Port 3000 on this machine is served by a different application (`authjs.csrf-token`
+  cookies, not this project's admin cookie), so a `pnpm dev` started there is
+  unreachable and misleading. The live QA therefore ran against a production
+  build on 3105.
+- `pnpm dev` and Playwright's `webServer` must not run at the same time: both
+  write `.next`, and the mixed artifacts made every airport page 404. One of the
+  runs also left Turbopack with a dead worker (`0xc0000142`) that only a
+  `rm -rf .next` fixed.
+
+Risk: none.
