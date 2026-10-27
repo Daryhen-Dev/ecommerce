@@ -74,8 +74,9 @@ validates them end to end in a real browser.
   - PR S-1 `feat/storefront-01-e2e-demo`: S1 + S2
   - PR S-2 `feat/storefront-02-catalog`: S3
   - PR S-3 `feat/storefront-03-cart`: S4 + S5
-- Running count: 616 (S1) + 1,090 (S2) = 1,706, lockfile excluded. PR S-1
-  slice = `d526465..` (S1 + S2), size exception (S1 tooling + S2 tests).
+- Running count: 616 (S1) + 1,090 (S2) + 599 (S3) = 2,305, lockfile
+  excluded. PR S-1 = #4 (S1 + S2). PR S-2 `feat/storefront-02-catalog` =
+  `f6eaa14` (S3).
 
 ## Tasks
 
@@ -106,10 +107,18 @@ validates them end to end in a real browser.
       query). 1,090 authored lines (55% tests).
       Choices: remainder below species minimum → SOLD_OUT; inactive
       airport → 404; codes uppercase-normalized, no trim.
-- [ ] S3 — Pages: city picker (`/`), city catalog (`/[airport]`) with next
+- [x] S3 — Pages: city picker (`/`), city catalog (`/[airport]`) with next
       flight card (cutoff, departure, pickup window in Ecuador time) and
       species cards (price/kg, available kg, tiers, season state), empty
       states (no open flight, sold out). E2E. Route: delegated.
+      Commit `f6eaa14`. TDD RED→GREEN for `src/lib/format.ts` (9 tests,
+      195 total); E2E written first (9 failing) → 13 passed; axe 0
+      violations on `/`, `/uio`, 404; keyboard reaches city links; `/xyz`
+      returns HTTP 404 (independent gentle-ai-verify). Native review:
+      medium, reliability, approved and acknowledged
+      (`review-c6c9dba12a06fa73`); 2 E2E robustness warnings (demo-data
+      coupled assertions), 1 test suggestion. Parent fixed demo copy
+      ("seasonal" → "de temporada").
 - [ ] S4 — Cart: client cart per shipment (localStorage), kg input with `.`
       only + min/step + max available, server action re-quoting with
       `priceOrder`, summary page with subtotal/discount/VAT/total and a
@@ -138,6 +147,9 @@ validates them end to end in a real browser.
 - `db.ts` throws at import time when `DATABASE_URL` is missing (by design;
   revisit if a page should degrade instead).
 
+- E2E catalog specs assert demo values (flight numbers, kg); make them
+  derive from seeded constants or tolerate re-seeding drift.
+
 ## Next step
 
-Push PR S-1, then S3 — pages.
+PR S-2 open, then S4 — cart (branch `feat/storefront-03-cart`).
