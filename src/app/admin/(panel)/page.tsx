@@ -1,4 +1,4 @@
-// Dashboard of the panel: the four operational sections with what each one is
+// Dashboard of the panel: the five operational sections with what each one is
 // for, and the current state of the operation at a glance (today's open
 // landings, the next flights and how many orders wait for payment).
 //
@@ -37,6 +37,11 @@ const SECTIONS = [
     name: "Pedidos",
     description: "Revisar los pedidos de cada vuelo y su estado.",
   },
+  {
+    href: "/admin/tax",
+    name: "IVA",
+    description: "Porcentajes de IVA y desde cuándo se aplican.",
+  },
 ] as const;
 
 export default function AdminDashboardPage() {
@@ -44,9 +49,9 @@ export default function AdminDashboardPage() {
     <div>
       <h1 className="text-3xl font-bold sm:text-4xl">Panel de la cooperativa</h1>
       <p className="mt-3 max-w-2xl text-neutral-700">
-        Desde aquí se opera la venta diaria: desembarques, vuelos, especies y
-        pedidos. Todo lo que cambies aquí se ve en la tienda en el siguiente
-        pedido; los pedidos ya hechos conservan su precio.
+        Desde aquí se opera la venta diaria: desembarques, vuelos, especies,
+        pedidos e IVA. Todo lo que cambies aquí se ve en la tienda en el
+        siguiente pedido; los pedidos ya hechos conservan su precio.
       </p>
 
       <section aria-labelledby="secciones" className="mt-10">

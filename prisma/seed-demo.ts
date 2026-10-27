@@ -397,6 +397,14 @@ async function main(): Promise<void> {
       },
     });
 
+    // Tax rates registered by the admin E2E carry an `E2E-tax-` note and are
+    // residue too: `tax_rate` is append-only and the panel never deletes a row,
+    // so the spec that proves a future-dated rate is stored leaves one behind on
+    // every run. This is fixture cleanup for a dev database (like the `DEMO-`
+    // and `e2e-species-` cleanups above), never a retraction of a real rate: the
+    // seed's own rows carry their own notes and are not matched.
+    await tx.taxRate.deleteMany({ where: { note: { startsWith: "E2E-tax-" } } });
+
     // Seasons of the two demo seasonal species: delete-then-recreate so the
     // windows stay relative to "now". Only demo species are touched.
     const speciesBySlug = new Map(
