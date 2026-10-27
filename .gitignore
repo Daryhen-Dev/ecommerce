@@ -52,3 +52,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Next 16 writes agent-facing guidance files into the project root on
+# build/dev. They are tool output, not source: never track them.
+/AGENTS.md
+/CLAUDE.md
