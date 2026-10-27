@@ -39,6 +39,17 @@ function validateWindow(raw: unknown, where: string): SeasonWindow {
   return window;
 }
 
+/**
+ * Validates one season window in place-free fashion and returns it.
+ *
+ * Exported for the admin panel: when the cooperative registers a season it
+ * must be rejected by the same rule the storefront uses to decide seasonal
+ * availability, not by a second copy of it in the form.
+ */
+export function validateSeasonWindow(window: SeasonWindow): SeasonWindow {
+  return validateWindow(window, "season");
+}
+
 function validateSeasonList(seasons: unknown): void {
   if (!Array.isArray(seasons)) {
     throw new SeasonError("INVALID_SEASON_WINDOW", "seasons must be an array");

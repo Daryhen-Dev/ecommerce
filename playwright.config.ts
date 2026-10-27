@@ -8,6 +8,14 @@ import { ADMIN_E2E_ENV } from "./e2e/support/admin";
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: false, // tests share one dev database
+  // One file at a time, for the same reason: the admin specs now MUTATE demo
+  // data on purpose (A5 changes Pargo's price and tier set to prove the
+  // storefront reflects it, A6 re-seeds the demo rows before each test), while
+  // the storefront specs read those same rows concurrently. Running files in
+  // parallel made those two correct behaviours fail each other — a re-seed
+  // deleted a flight a shipments test was closing, and a cart read a tier set
+  // mid-edit. Serial execution costs about a minute and buys determinism.
+  workers: 1,
   retries: process.env.CI ? 2 : 0,
   reporter: "list",
   use: {

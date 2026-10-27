@@ -79,8 +79,16 @@ function isNonNegativeSafeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
-/** Validates one tier set in place-free fashion; returns tiers sorted by threshold (copy). */
-function validateTierSet(tiers: unknown, where: string): DiscountTier[] {
+/**
+ * Validates one tier set in place-free fashion; returns tiers sorted by
+ * threshold (copy).
+ *
+ * Exported because the admin panel edits exactly the tiers this function
+ * validates: the species form must enforce the same range and
+ * duplicate-threshold rules the pricing engine enforces at quote time, and
+ * reimplementing them in the form is how the two drift apart.
+ */
+export function validateTierSet(tiers: unknown, where: string): DiscountTier[] {
   if (!Array.isArray(tiers)) {
     throw new PricingError("INVALID_TIER", `${where}: tiers must be an array`);
   }

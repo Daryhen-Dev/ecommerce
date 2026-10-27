@@ -55,12 +55,20 @@ test("the shared password logs in and the dashboard renders", async ({ page }) =
   await expect(page.getByRole("main")).toBeVisible();
   await expect(page.getByRole("button", { name: "Salir" })).toBeVisible();
 
-  // Next sections are announced, not clickable yet.
-  await expect(page.getByRole("heading", { level: 2, name: "Próximamente" })).toBeVisible();
-  const upcoming = page.getByRole("listitem").filter({ hasText: "Próximamente" });
-  await expect(upcoming).toHaveCount(4);
-  for (const name of ["Desembarques", "Vuelos", "Especies", "Pedidos"]) {
-    await expect(page.getByText(name, { exact: true })).toHaveCount(1);
+  // Every operational section is reachable from the dashboard (A5/A6 wired
+  // them): the placeholder list is gone.
+  await expect(page.getByRole("heading", { level: 2, name: "Secciones" })).toBeVisible();
+  const sections = [
+    ["Desembarques", "/admin/lots"],
+    ["Vuelos", "/admin/shipments"],
+    ["Especies", "/admin/species"],
+    ["Pedidos", "/admin/orders"],
+  ] as const;
+  for (const [name, href] of sections) {
+    await expect(page.getByRole("link", { name, exact: true })).toHaveAttribute(
+      "href",
+      href,
+    );
   }
 
   await expectNoSeriousAxeViolations(page);

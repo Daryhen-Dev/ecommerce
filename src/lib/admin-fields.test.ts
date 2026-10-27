@@ -13,6 +13,7 @@ import {
   parseEcuadorDateTimeField,
   parseIntField,
   parseKgField,
+  parsePercentField,
   parseSelectField,
   parseSlugField,
   parseTextField,
@@ -299,5 +300,47 @@ describe("parseSelectField", () => {
 
   it("uses the default label when none is injected", () => {
     errorOf(parseSelectField("OTHER", ALLOWED), "Elige una opción válida para el campo.");
+  });
+});
+
+describe("parseKgField with allowZero", () => {
+  it("accepts an explicit zero only when the caller allows it", () => {
+    expect(valueOf(parseKgField("0", { allowZero: true }))).toBe(0);
+    expect(valueOf(parseKgField("0.000", { allowZero: true }))).toBe(0);
+  });
+
+  it("still rejects zero by default (a weight exists)", () => {
+    errorOf(parseKgField("0"), "El peso debe ser mayor que cero.");
+  });
+
+  it("keeps rejecting malformed input with the option on", () => {
+    errorOf(parseKgField("1,5", { allowZero: true }), "Usa punto para decimales, ej. 7.5");
+    errorOf(parseKgField("-1", { allowZero: true }), "Usa punto para decimales, ej. 7.5");
+  });
+});
+
+describe("parsePercentField", () => {
+  it("converts a percentage to basis points", () => {
+    expect(valueOf(parsePercentField("8"))).toBe(800);
+    expect(valueOf(parsePercentField("2.5"))).toBe(250);
+    expect(valueOf(parsePercentField("2.25"))).toBe(225);
+    expect(valueOf(parsePercentField("0"))).toBe(0);
+    expect(valueOf(parsePercentField("100"))).toBe(10000);
+    expect(valueOf(parsePercentField(" 12 "))).toBe(1200);
+  });
+
+  it("rejects an empty value with the labelled message", () => {
+    errorOf(parsePercentField(""), "El porcentaje es obligatorio.");
+    errorOf(parsePercentField("", { label: "descuento" }), "El descuento es obligatorio.");
+  });
+
+  it("rejects a comma, more than two decimals and negative values", () => {
+    errorOf(parsePercentField("2,5"), "Usa punto para decimales, ej. 2.5");
+    errorOf(parsePercentField("2.555"), "Usa punto para decimales, ej. 2.5");
+    errorOf(parsePercentField("-5"), "Usa punto para decimales, ej. 2.5");
+  });
+
+  it("rejects a percentage above 100 with the labelled range message", () => {
+    errorOf(parsePercentField("101", { label: "descuento" }), "El descuento debe estar entre 0 y 100.");
   });
 });
