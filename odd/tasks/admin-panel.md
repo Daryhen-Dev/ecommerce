@@ -314,3 +314,45 @@ the only place `reservedGrams` may increase, and the natural home of
   `?`, which in a regex makes the previous character optional, so the assertion
   could never match. Replaced with a predicate on `pathname` +
   `searchParams.get("created")`. The redirect itself was always correct.
+
+## Live QA (A5 + A6, ego-browser)
+
+Walked the panel in a real Chromium against `pnpm dev` on :3000, logged in
+through the form, with the demo data as the cooperative would see it:
+
+- Dashboard: no "Próximamente" left; the four sections are links to
+  `/admin/lots`, `/admin/shipments`, `/admin/species`, `/admin/orders`.
+- `/admin/species`: six rows with price, minimum, step, policy ("Tramos
+  propios"), VAT ("IVA estándar") and season ("1 temporada"); Langosta shows
+  "Sin descuento".
+- `/admin/species/snapper`: slug rendered read-only in a grey box with "El slug
+  no se puede cambiar: la tienda y los pedidos ya lo usan"; tiers prefilled
+  0/0, 3/3, 8/8 with "Quitar tramo 1..3" and "Agregar tramo".
+- Price edit: set 12.75 → banner "Cambios guardados." → `/uio` immediately
+  showed "Pargo … $12.75 / kg · Pedido mínimo 1 kg · en pasos de 0.5 kg · Desde
+  3 kg en tu pedido: 3% · Desde 8 kg en tu pedido: 8%". Restored to 12 in the
+  same session (S5.6 verified end to end).
+- `/admin/orders`: defaults to DEMO-UIO-1 ("Quito (UIO) · sale el viernes 30 de
+  octubre, 08:00 · 3 pedidos"); each card leads with "CÓDIGO DE RETIRO"
+  DEMO-ORDER-…, then status badge, dates, customer grid and the items table with
+  Especie / Kilos / Precio por kilo / Total de la línea, and the locked totals.
+- Transition: "Marcar pagado" on DEMO-ORDER-PENDING → badge flips to "Pagado",
+  the buttons disappear, the cancelled order stays read-only (no actions).
+- Unauthenticated check (prod server, no cookie): `/admin/orders`,
+  `/admin/species` and `/admin/species/snapper` all answer 307 to
+  `/admin/login?next=…` and the denied body contains no customer data
+  (0 matches for the demo phone/name/cédula).
+
+Observations not fixed here (out of this slice):
+- The orders flight selector lists the `E2E-TEST-*` flights that the shipments
+  spec leaves behind; the existing `E2E-` cleanup follow-up now matters for a
+  second section.
+- Next 16 writes `AGENTS.md` and `CLAUDE.md` into the project root on build/dev.
+  They are not in `.gitignore`; the generated copies from this session were
+  deleted and nothing was committed. Adding them to `.gitignore` is a
+  repository decision, not this feature's.
+- Screenshots taken through ego-browser render bold text washed out; axe reports
+  no serious/critical violation on the same pages, so it is a capture artifact,
+  not a contrast defect.
+
+Risk: none.
