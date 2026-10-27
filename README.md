@@ -38,7 +38,7 @@ through Prisma.
 cp .env.example .env  # local dev credentials (gitignored)
 pnpm db:up            # start the postgres container
 pnpm db:migrate       # create/apply migrations (prisma migrate dev)
-pnpm db:seed          # seed airports and placeholder discount tiers
+pnpm db:seed          # seed airports, placeholder discount tiers and VAT rates
 pnpm db:studio        # browse data with Prisma Studio
 ```
 

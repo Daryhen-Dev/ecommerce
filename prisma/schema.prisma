@@ -34,6 +34,13 @@ enum LotStatus {
   @@map("lot_status")
 }
 
+enum VatCategory {
+  STANDARD
+  ZERO_RATED
+
+  @@map("vat_category")
+}
+
 enum ShipmentStatus {
   SCHEDULED
   CLOSED
@@ -78,7 +85,7 @@ model Species {
   discountPolicy  DiscountPolicy @default(GLOBAL) @map("discount_policy")
   minOrderGrams   Int @default(1000) @map("min_order_grams")
   orderStepGrams  Int @default(500) @map("order_step_grams")
-  vatRateBps      Int @default(0) @map("vat_rate_bps")
+  vatCategory     VatCategory @default(STANDARD) @map("vat_category")
   isSeasonal      Boolean @default(false) @map("is_seasonal")
   active          Boolean @default(true)
 
@@ -122,6 +129,24 @@ model DiscountTier {
 
   @@unique([speciesId, minTotalGrams])
   @@map("discount_tier")
+}
+
+// Effective-dated VAT rates per category; append-only history. Changing a
+// rate means inserting a new row with a future/current effectiveFrom, never
+// updating old rows, so historical orders keep the rate they were charged.
+// The applicable rate for a category at instant T is the row with the
+// greatest effectiveFrom <= T.
+model TaxRate {
+  id            String      @id @default(cuid())
+  category      VatCategory
+  rateBps       Int         @map("rate_bps")
+  effectiveFrom DateTime    @map("effective_from") @db.Timestamptz(6)
+  note          String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([category, effectiveFrom])
+  @@map("tax_rate")
 }
 
 // One landing of one species at the dock.
@@ -219,6 +244,10 @@ model OrderItem {
   grams            Int
   pricePerKgCents  Int @map("price_per_kg_cents")
   discountBps      Int @map("discount_bps")
+  vatRateBps       Int @map("vat_rate_bps")
+  grossCents       Int @map("gross_cents")
+  discountCents    Int @map("discount_cents")
+  vatCents         Int @map("vat_cents")
   lineTotalCents   Int @map("line_total_cents")
 
   @@index([lotId])
