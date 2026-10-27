@@ -17,6 +17,12 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+// The demo orders are priced by the real pricing domain, not by hand: the seed
+// must produce amounts the quote engine itself would produce, so a rule change
+// cannot leave the demo data inconsistent with the panel or the storefront.
+import { priceOrder, type DiscountTier } from "../src/domain/pricing";
+import { cents } from "../src/domain/money";
+import { grams } from "../src/domain/weight";
 
 // Ecuador mainland (America/Guayaquil) has no DST and is fixed at UTC-5.
 const ECUADOR_UTC_OFFSET_HOURS = 5;
@@ -239,6 +245,107 @@ const DEMO_LOTS: LotSpec[] = [
 
 const AIRPORT_CODES = ["UIO", "GYE", "CUE"] as const;
 
+// --- demo orders (A6) -------------------------------------------------------
+//
+// There is no checkout yet, so the panel's orders section and its E2E need
+// orders the seed creates. They all live on the DEMO-UIO-1 flight, carry a
+// `DEMO-` pickup code prefix (the only thing the delete-then-recreate matches
+// on) and use kilograms a customer could really order: every line respects its
+// species' minimum and step, and the prices, tiers and VAT rate come from the
+// database through the domain's `priceOrder`.
+//
+// Amounts (computed, see the panel for the rendered values):
+// - DEMO-ORDER-PENDING: Wahoo 4 kg + Pargo 4 kg, 8 kg total.
+//     wahoo  4 kg x $9.00 = $36.00 gross, 5% tier (8 kg) -> -$1.80, IVA 15% $5.13
+//     pargo  4 kg x $12.00 = $48.00 gross, 8% custom tier -> -$3.84, IVA 15% $6.62
+//     subtotal $84.00, descuento $5.64, IVA $11.75, total $90.11
+// - DEMO-ORDER-PAID: Atún 6 kg + Bacalao 2 kg, 8 kg total.
+//     atún    6 kg x $11.00 = $66.00 gross, 5% tier -> -$3.30, IVA 15% $9.41
+//     bacalao 2 kg x $14.00 = $28.00 gross, 5% tier -> -$1.40, IVA 15% $3.99
+//     subtotal $94.00, descuento $4.70, IVA $13.40, total $102.70
+// - DEMO-ORDER-CANCELLED: Pargo 3 kg + Wahoo 3 kg, 6 kg total.
+//     pargo 3 kg x $12.00 = $36.00 gross, 3% custom tier -> -$1.08, IVA 15% $5.24
+//     wahoo 3 kg x $9.00 = $27.00 gross, 5% tier -> -$1.35, IVA 15% $3.85
+//     subtotal $63.00, descuento $2.43, IVA $9.09, total $69.66
+//
+// The demo does NOT touch any lot's `reservedGrams`: stock reservation arrives
+// with checkout, and the demo availability numbers are asserted by the
+// storefront E2E.
+
+type OrderItemSpec = {
+  speciesSlug: string;
+  /** Note of the OPEN demo lot the line would have taken its kilos from. */
+  lotNotes: string;
+  grams: number;
+};
+
+type OrderSpec = {
+  code: string;
+  status: "PENDING_PAYMENT" | "PAID" | "CANCELLED";
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerIdNumber: string;
+  /** Creation instant, relative to "now" so the demo never looks stale. */
+  createdDaysAgo: number;
+  /** Minutes after creation the payment landed (PAID orders only). */
+  paidMinutesAfterCreation?: number;
+  items: OrderItemSpec[];
+};
+
+// Fictitious customers: invented names, @example.com addresses, 099… mobile
+// numbers and 10-digit cédulas. No real person is described here.
+const DEMO_ORDERS: OrderSpec[] = [
+  {
+    code: "DEMO-ORDER-PENDING",
+    status: "PENDING_PAYMENT",
+    customerName: "María Fernanda Chávez Ruiz",
+    customerEmail: "maria.chavez@example.com",
+    customerPhone: "0991234567",
+    customerIdNumber: "1712345678",
+    createdDaysAgo: 1,
+    items: [
+      { speciesSlug: "wahoo", lotNotes: "DEMO-lot-wahoo-open", grams: 4000 },
+      { speciesSlug: "snapper", lotNotes: "DEMO-lot-snapper-open", grams: 4000 },
+    ],
+  },
+  {
+    code: "DEMO-ORDER-PAID",
+    status: "PAID",
+    customerName: "Jorge Luis Andrade Salazar",
+    customerEmail: "jorge.andrade@example.com",
+    customerPhone: "0997654321",
+    customerIdNumber: "0923456789",
+    createdDaysAgo: 2,
+    paidMinutesAfterCreation: 25,
+    items: [
+      {
+        speciesSlug: "yellowfin-tuna",
+        lotNotes: "DEMO-lot-yellowfin-tuna-open",
+        grams: 6000,
+      },
+      { speciesSlug: "grouper", lotNotes: "DEMO-lot-grouper-open", grams: 2000 },
+    ],
+  },
+  {
+    code: "DEMO-ORDER-CANCELLED",
+    status: "CANCELLED",
+    customerName: "Ana Belén Cedeño Morán",
+    customerEmail: "ana.cedeno@example.com",
+    customerPhone: "0984567123",
+    customerIdNumber: "1309876543",
+    createdDaysAgo: 3,
+    items: [
+      { speciesSlug: "snapper", lotNotes: "DEMO-lot-snapper-open", grams: 3000 },
+      { speciesSlug: "wahoo", lotNotes: "DEMO-lot-wahoo-open", grams: 3000 },
+    ],
+  },
+];
+
+/** Flight the demo orders belong to (the first UIO departure of week 1). */
+const DEMO_ORDER_FLIGHT_NUMBER = "DEMO-UIO-1";
+
+
 // Arrival adds extra flight time for Cuenca (1-2 extra stops).
 function arrivalHoursFor(airportCode: string): number {
   return airportCode === "CUE" ? 5 : 2;
@@ -271,6 +378,25 @@ async function main(): Promise<void> {
   }
 
   await db.$transaction(async (tx) => {
+    // Demo orders go FIRST: their items reference demo lots with an onDelete
+    // Restrict foreign key, so deleting the lots before the orders would fail.
+    // The `DEMO-` code prefix is the only thing this matches on; items go with
+    // the order (that relation cascades).
+    await tx.order.deleteMany({ where: { code: { startsWith: "DEMO-" } } });
+
+    // Species created by the admin E2E (`e2e-species-*`) are residue: the panel
+    // never deletes a species, so the spec that proves creation leaves one row
+    // behind on every run. Deleting them here keeps the storefront and the
+    // species list identical after a seed. The `lots`/`orderItems` guard is
+    // deliberate: a species somebody actually used is never removed by a seed.
+    await tx.species.deleteMany({
+      where: {
+        slug: { startsWith: "e2e-species-" },
+        lots: { none: {} },
+        orderItems: { none: {} },
+      },
+    });
+
     // Seasons of the two demo seasonal species: delete-then-recreate so the
     // windows stay relative to "now". Only demo species are touched.
     const speciesBySlug = new Map(
@@ -377,17 +503,150 @@ async function main(): Promise<void> {
       status: "COMPLETED",
     });
     await tx.shipment.createMany({ data: shipments });
+
+    // --- demo orders -------------------------------------------------------
+    // They are priced with the real domain: global tiers, the species' custom
+    // tiers and the STANDARD VAT rate in force are read from the database, so
+    // the stored line values are exactly what the quote engine would charge.
+    const orderShipment = await tx.shipment.findFirst({
+      where: { flightNumber: DEMO_ORDER_FLIGHT_NUMBER },
+      select: { id: true },
+    });
+    if (!orderShipment) {
+      throw new Error(
+        `Shipment ${DEMO_ORDER_FLIGHT_NUMBER} not found after seeding shipments.`,
+      );
+    }
+
+    const globalTiers: DiscountTier[] = (
+      await tx.discountTier.findMany({
+        where: { speciesId: null },
+        select: { minTotalGrams: true, discountBps: true },
+      })
+    ).map((tier) => ({
+      minTotalGrams: tier.minTotalGrams,
+      discountBps: tier.discountBps,
+    }));
+    if (globalTiers.length === 0) {
+      throw new Error(
+        "Global discount tiers not found. Run the base seed first: pnpm db:seed",
+      );
+    }
+
+    // `now` is the transaction's instant, declared with the seasons above.
+    const standardRate = await tx.taxRate.findFirst({
+      where: { category: "STANDARD", effectiveFrom: { lte: now } },
+      orderBy: { effectiveFrom: "desc" },
+      select: { rateBps: true },
+    });
+    if (!standardRate) {
+      throw new Error(
+        "STANDARD VAT rate not found. Run the base seed first: pnpm db:seed",
+      );
+    }
+
+    const speciesBySlugForOrders = new Map(
+      (await tx.species.findMany()).map((species) => [species.slug, species]),
+    );
+    const lotIdByNotes = new Map(
+      (
+        await tx.lot.findMany({
+          where: { notes: { startsWith: "DEMO-" } },
+          select: { id: true, notes: true },
+        })
+      ).map((lot) => [lot.notes, lot.id]),
+    );
+    const speciesSpecBySlug = new Map(
+      DEMO_SPECIES.map((species) => [species.slug, species]),
+    );
+
+    for (const spec of DEMO_ORDERS) {
+      const speciesIds: string[] = [];
+      const lotIds: string[] = [];
+      const lines = spec.items.map((item, index) => {
+        const species = speciesBySlugForOrders.get(item.speciesSlug);
+        const speciesSpec = speciesSpecBySlug.get(item.speciesSlug);
+        const lotId = lotIdByNotes.get(item.lotNotes);
+        if (!species || !speciesSpec || !lotId) {
+          throw new Error(
+            `Demo order ${spec.code}: species ${item.speciesSlug} or lot ${item.lotNotes} not found.`,
+          );
+        }
+        speciesIds[index] = species.id;
+        lotIds[index] = lotId;
+        return {
+          speciesId: species.id,
+          grams: grams(item.grams),
+          pricePerKgCents: cents(speciesSpec.pricePerKgCents),
+          discountPolicy: speciesSpec.discountPolicy,
+          customTiers:
+            speciesSpec.discountPolicy === "CUSTOM"
+              ? SNAPPER_TIERS.map((tier) => ({
+                  minTotalGrams: tier.minTotalGrams,
+                  discountBps: tier.discountBps,
+                }))
+              : undefined,
+          vatCategory: "STANDARD" as const,
+        };
+      });
+
+      const priced = priceOrder({
+        lines,
+        globalTiers,
+        vatRatesBps: { STANDARD: standardRate.rateBps, ZERO_RATED: 0 },
+      });
+
+      const createdAt = new Date(now.getTime() - spec.createdDaysAgo * MS_PER_DAY);
+      const paidAt =
+        spec.paidMinutesAfterCreation === undefined
+          ? null
+          : new Date(createdAt.getTime() + spec.paidMinutesAfterCreation * 60_000);
+
+      await tx.order.create({
+        data: {
+          code: spec.code,
+          shipmentId: orderShipment.id,
+          customerName: spec.customerName,
+          customerEmail: spec.customerEmail,
+          customerPhone: spec.customerPhone,
+          customerIdNumber: spec.customerIdNumber,
+          status: spec.status,
+          totalGrams: priced.totalGrams,
+          subtotalCents: priced.subtotalCents,
+          discountCents: priced.discountCents,
+          vatCents: priced.vatCents,
+          totalCents: priced.totalCents,
+          paidAt,
+          createdAt,
+          items: {
+            create: priced.lines.map((line, index) => ({
+              speciesId: speciesIds[index],
+              lotId: lotIds[index],
+              grams: line.grams,
+              pricePerKgCents: line.pricePerKgCents,
+              discountBps: line.discountBps,
+              vatRateBps: line.vatRateBps,
+              grossCents: line.grossCents,
+              discountCents: line.discountCents,
+              vatCents: line.vatCents,
+              lineTotalCents: line.lineTotalCents,
+            })),
+          },
+        },
+      });
+    }
   });
 
-  const [speciesCount, seasonCount, lotCount, shipmentCount] =
+  const [speciesCount, seasonCount, lotCount, shipmentCount, orderCount] =
     await Promise.all([
       db.species.count(),
       db.season.count(),
       db.lot.count(),
       db.shipment.count(),
+      db.order.count(),
     ]);
   console.log(
-    `Demo seed completed. species=${speciesCount} seasons=${seasonCount} lots=${lotCount} shipments=${shipmentCount}`,
+    `Demo seed completed. species=${speciesCount} seasons=${seasonCount} lots=${lotCount} shipments=${shipmentCount} orders=${orderCount}`,
   );
 }
 
