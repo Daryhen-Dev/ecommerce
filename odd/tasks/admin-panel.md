@@ -72,8 +72,8 @@ SQL hands-on can operate the marketplace, so nothing real can be sold.
   - PR A-1 `feat/admin-01-foundation`: A1 + A2
   - PR A-2 `feat/admin-02-operation`: A3 + A4
   - PR A-3 `feat/admin-03-species-orders`: A5 + A6
-- Running count: 1,037 (A1) + 1,129 (A2) = 2,166, lockfile excluded.
-  PR A-1 slice = `1086caf..256f675` + docs.
+- Running count: 2,166 (A1+A2) + 2,783 (A3+A4) = 4,949, lockfile excluded.
+  PR A-2 slice = `d5483c4..` on `feat/admin-02-operation`.
 
 ## Tasks
 
@@ -105,15 +105,25 @@ SQL hands-on can operate the marketplace, so nothing real can be sold.
       Choices: labels are nouns without article ("El peso mínimo es…");
       select is case-sensitive after trim; extra exported message constants
       reused by A3+ forms.
-- [ ] A3 — Lots: list + create + close (+ cancel-with-warning), species
-      selector, validation vs rules, reflects on storefront immediately
-      (catalog availability). E2E: create a lot, see new availability on
-      `/uio`, close it and see it disappear. Route: delegated.
-- [ ] A4 — Shipments: list per airport + create + close; validates window
-      invariants and previews pickup window; catalog picks it up (next
-      orderable flight changes). E2E: create a flight for next week, it
-      becomes the second orderable flight; close the current one and the
-      new one takes over. Route: delegated.
+- [x] A3 — Lots: list + create + close (+ cancel-with-warning deferred),
+      species selector, validation vs rules, reflects on storefront
+      immediately (catalog availability). E2E: create a lot, see new
+      availability on `/uio`, close it and see it disappear. Route:
+      delegated. Part of commit `d5483c4`. TDD RED→GREEN (21 tests);
+      live-flow verified (90 → 97.345 → 90 kg on /uio).
+- [x] A4 — Shipments: list per airport + create + close; validates window
+      invariants and previews pickup window; catalog picks it up. E2E:
+      created flight appears; invalid window / past cutoff errors. Route:
+      delegated. Part of commit `d5483c4`. TDD RED→GREEN (19 tests).
+      A3+A4 together: 345 unit + 50 E2E (run twice, re-run safe);
+      independent gentle-ai-verify PASS (server authority, reservedGrams
+      never writable, close semantics, live UI flow). Native review:
+      **unavailable** (same `schema-incompatible` outage); RDD-off fallback
+      applied. 2,783 authored lines.
+      Choices: no confirm dialog on Cerrar (idempotent, guarded);
+      per-airport grouping on shipments list; duplicate-day warning instead
+      of hard constraint; cancel-with-warning deferred (no schema field);
+      domain invariant messages still English after the Spanish preamble.
 - [ ] A5 — Species: list + edit (price, min, step, policy, vat category,
       seasonal flag) + tiers editor for CUSTOM policy + seasons editor for
       seasonal species; slug immutable after creation; create new species.
@@ -152,6 +162,12 @@ SQL hands-on can operate the marketplace, so nothing real can be sold.
   every committed candidate since A1 (diagnostics identical each time, no
   lineage created). Blocked until the harness recovers; retry per PR slice.
 
+- seed-demo cleanup: add an `E2E-` branch (notes / flightNumber prefixes)
+  so repeated E2E runs don't accumulate rows.
+- Spanish-ize the domain window invariant messages surfaced in forms.
+- Wire Desembarques/Vuelos into the admin nav (A1 spec asserts the
+  placeholder list; update it when wiring).
+
 ## Next step
 
-Open PR A-1, then A3 — lots (branch `feat/admin-02-operation`).
+A5 — species edit + tiers + seasons (branch `feat/admin-03-species-orders`).
