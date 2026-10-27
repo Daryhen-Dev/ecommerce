@@ -74,9 +74,10 @@ validates them end to end in a real browser.
   - PR S-1 `feat/storefront-01-e2e-demo`: S1 + S2
   - PR S-2 `feat/storefront-02-catalog`: S3
   - PR S-3 `feat/storefront-03-cart`: S4 + S5
-- Running count: 616 (S1) + 1,090 (S2) + 599 (S3) = 2,305, lockfile
-  excluded. PR S-1 = #4 (S1 + S2). PR S-2 `feat/storefront-02-catalog` =
-  `f6eaa14` (S3).
+- Running count: 616 (S1) + 1,090 (S2) + 599 (S3) + 2,545 (S4) + 749 (S5)
+  = 5,599, lockfile excluded. PR S-1 = #4 (S1 + S2). PR S-2 = #5 (S3).
+  PR S-3 `feat/storefront-03-cart` = `55154c3..0c5b4b4` + docs (S4 + S5),
+  size exception.
 
 ## Tasks
 
@@ -119,13 +120,39 @@ validates them end to end in a real browser.
       (`review-c6c9dba12a06fa73`); 2 E2E robustness warnings (demo-data
       coupled assertions), 1 test suggestion. Parent fixed demo copy
       ("seasonal" → "de temporada").
-- [ ] S4 — Cart: client cart per shipment (localStorage), kg input with `.`
+- [x] S4 — Cart: client cart per shipment (localStorage), kg input with `.`
       only + min/step + max available, server action re-quoting with
       `priceOrder`, summary page with subtotal/discount/VAT/total and a
       disabled "Ir a pagar". TDD for cart logic. Route: delegated.
-- [ ] S5 — E2E flows: pick Quito → add 7.5 kg → totals match `priceOrder`;
+      Commit `55154c3`. Resumed after an interrupted writer session: the
+      partial tree was reconciled against the spec (6 deviations fixed:
+      duplicate merge, 20-line cap, line error codes, quote shape, pricing
+      valid lines when others fail, single request instant). TDD RED (16
+      failing) → GREEN 239 unit; 27 E2E incl. 12 cart flows; axe 0. Parent
+      fixed the per-line "Subtotal sin IVA" column (showed pre-discount
+      gross, so rows did not add up) and added row assertions. Independent
+      gentle-ai-verify: server authority, malicious payload probes,
+      hand-computed mixed cart, keyboard Enter/Space, corrupted
+      localStorage. Native review: medium, reliability, approved and
+      acknowledged (`review-e034974802fc81e6`); 5 advisory suggestions.
+      Choices: totals hidden while any line has an error; SOLD_OUT reported
+      as INSUFFICIENT_AVAILABLE with availableGrams; extra INVALID_INPUT
+      order code. 2,545 authored lines (tests included).
+- [x] S5 — E2E flows: pick Quito → add 7.5 kg → totals match `priceOrder`;
       seasonal species out of season not addable; invalid kg input errors;
       keyboard-only path; axe on each page. Route: delegated.
+      Commit `0c5b4b4`. New specs: keyboard (mouse-free journey,
+      focus-visible), availability (Dorado not addable; tampered cart with
+      out-of-season / unknown slug rejected, totals hidden), pages (axe on
+      /gye, /cue, empty cart; 375px responsive). Keyboard and availability
+      passed on first run (characterization, not RED); responsive spec was
+      RED and exposed a real defect — cart table caused page horizontal
+      scroll at 375px; fixed with a labelled, keyboard-reachable
+      `overflow-x-auto` region. Demo values centralized in
+      `e2e/support/demo.ts` (closes the demo-coupling follow-up). 36 E2E
+      passed twice (no flakes), 239 unit; independent gentle-ai-verify.
+      Native review: medium, reliability, approved and acknowledged
+      (`review-3cc3ebeef78be37b`); 3 advisory suggestions.
 
 ## Acceptance criteria
 
@@ -147,9 +174,12 @@ validates them end to end in a real browser.
 - `db.ts` throws at import time when `DATABASE_URL` is missing (by design;
   revisit if a page should degrade instead).
 
-- E2E catalog specs assert demo values (flight numbers, kg); make them
-  derive from seeded constants or tolerate re-seeding drift.
+- ~~E2E catalog specs assert demo values~~ — centralized in
+  `e2e/support/demo.ts` (S5).
+- SOLD_OUT add-to-cart path not covered by E2E (demo has no orderable
+  species at 0 kg); unit-covered in catalog mapping and quote.
 
 ## Next step
 
-PR S-2 open, then S4 — cart (branch `feat/storefront-03-cart`).
+Feature complete. Open PR S-3; owner decides merge order and the next
+feature (admin panel for the cooperative, checkout/payment).

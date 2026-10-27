@@ -3,20 +3,26 @@ import { formatKilograms, grams } from "@/domain/weight";
 
 import { formatPercentFromBps } from "@/lib/format";
 
+import AddToCartForm from "./cart/AddToCartForm";
 import AvailabilityBadge from "./AvailabilityBadge";
 
 import type { CatalogItem } from "@/server/catalog-mapping";
 
 /**
  * One species card: description, price per kg, order minimum and step,
- * volume discount tiers and availability. Presentational only.
+ * volume discount tiers and availability. Presentational only; the
+ * add-to-cart form is a client component rendered for AVAILABLE species
+ * when the shipment is orderable.
  */
 export default function SpeciesCard({
   item,
   orderable,
+  shipmentId,
 }: {
   item: CatalogItem;
   orderable: boolean;
+  /** Current orderable shipment id; null when no flight is open. */
+  shipmentId: string | null;
 }) {
   const discountTiers = item.tiers.filter((tier) => tier.discountBps > 0);
   return (
@@ -51,6 +57,16 @@ export default function SpeciesCard({
           <p className="text-sm text-neutral-700">
             No pedible ahora: no hay vuelo abierto.
           </p>
+        )}
+        {orderable && shipmentId !== null && item.availability.state === "AVAILABLE" && (
+          <AddToCartForm
+            slug={item.slug}
+            name={item.name}
+            minOrderGrams={item.minOrderGrams}
+            orderStepGrams={item.orderStepGrams}
+            availableGrams={item.availability.availableGrams}
+            shipmentId={shipmentId}
+          />
         )}
       </div>
     </article>

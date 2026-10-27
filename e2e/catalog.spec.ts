@@ -4,7 +4,9 @@
 // The demo seed creates shipments whose cutoff dates are relative to "now";
 // against a stale database the "next flight" assertions would not hold.
 import { test, expect } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+
+import { FLIGHT_NUMBERS, SPECIES, kgText } from "./support/demo";
+import { expectNoSeriousAxeViolations } from "./support/axe";
 
 test.describe("city picker (/)", () => {
   test("lists Quito, Guayaquil and Cuenca links in that order", async ({
@@ -34,15 +36,7 @@ test.describe("city picker (/)", () => {
 
   test("passes axe", async ({ page }) => {
     await page.goto("/");
-    const results = await new AxeBuilder({ page }).analyze();
-    const blocking = results.violations.filter(
-      (violation) =>
-        violation.impact === "serious" || violation.impact === "critical",
-    );
-    if (blocking.length > 0) {
-      console.log(JSON.stringify(blocking, null, 2));
-    }
-    expect(blocking).toEqual([]);
+    await expectNoSeriousAxeViolations(page);
   });
 });
 
@@ -54,7 +48,7 @@ test.describe("city catalog (/uio)", () => {
       "Quito",
     );
     const flightSection = page.getByRole("region", { name: /Próximo vuelo/ });
-    await expect(flightSection).toContainText("DEMO-UIO-1");
+    await expect(flightSection).toContainText(FLIGHT_NUMBERS.UIO);
     await expect(flightSection).toContainText("Pedidos hasta");
     await expect(flightSection).toContainText("Salida");
     await expect(flightSection).toContainText("Llegada estimada");
@@ -67,9 +61,11 @@ test.describe("city catalog (/uio)", () => {
     await page.goto("/uio");
 
     const lobster = page.getByRole("article").filter({
-      has: page.getByRole("heading", { name: "Langosta espinosa" }),
+      has: page.getByRole("heading", { name: SPECIES.lobster.name }),
     });
-    await expect(lobster).toContainText("Disponible: 25 kg");
+    await expect(lobster).toContainText(
+      `Disponible: ${kgText(SPECIES.lobster.availableGrams)}`,
+    );
     await expect(lobster).toContainText("Sin descuento por volumen");
   });
 
@@ -79,7 +75,7 @@ test.describe("city catalog (/uio)", () => {
     await page.goto("/uio");
 
     const mahi = page.getByRole("article").filter({
-      has: page.getByRole("heading", { name: "Dorado" }),
+      has: page.getByRole("heading", { name: SPECIES.mahiMahi.name }),
     });
     await expect(mahi).toContainText("Fuera de temporada");
     await expect(mahi).toContainText("Vuelve el");
@@ -89,7 +85,7 @@ test.describe("city catalog (/uio)", () => {
     await page.goto("/uio");
 
     const snapper = page.getByRole("article").filter({
-      has: page.getByRole("heading", { name: "Pargo" }),
+      has: page.getByRole("heading", { name: SPECIES.snapper.name }),
     });
     await expect(snapper).toContainText("Desde 3 kg en tu pedido: 3% de descuento");
   });
@@ -98,22 +94,16 @@ test.describe("city catalog (/uio)", () => {
     await page.goto("/uio");
 
     const grouper = page.getByRole("article").filter({
-      has: page.getByRole("heading", { name: "Bacalao de Galápagos" }),
+      has: page.getByRole("heading", { name: SPECIES.grouper.name }),
     });
-    await expect(grouper).toContainText("Disponible: 60 kg");
+    await expect(grouper).toContainText(
+      `Disponible: ${kgText(SPECIES.grouper.availableGrams)}`,
+    );
   });
 
   test("passes axe", async ({ page }) => {
     await page.goto("/uio");
-    const results = await new AxeBuilder({ page }).analyze();
-    const blocking = results.violations.filter(
-      (violation) =>
-        violation.impact === "serious" || violation.impact === "critical",
-    );
-    if (blocking.length > 0) {
-      console.log(JSON.stringify(blocking, null, 2));
-    }
-    expect(blocking).toEqual([]);
+    await expectNoSeriousAxeViolations(page);
   });
 });
 
@@ -121,7 +111,7 @@ test.describe("other cities and errors", () => {
   test("/cue shows the Cuenca flight", async ({ page }) => {
     await page.goto("/cue");
     await expect(page.getByRole("region", { name: /Próximo vuelo/ })).toContainText(
-      "DEMO-CUE-1",
+      FLIGHT_NUMBERS.CUE,
     );
   });
 
@@ -135,14 +125,6 @@ test.describe("other cities and errors", () => {
 
   test("404 page passes axe", async ({ page }) => {
     await page.goto("/xyz");
-    const results = await new AxeBuilder({ page }).analyze();
-    const blocking = results.violations.filter(
-      (violation) =>
-        violation.impact === "serious" || violation.impact === "critical",
-    );
-    if (blocking.length > 0) {
-      console.log(JSON.stringify(blocking, null, 2));
-    }
-    expect(blocking).toEqual([]);
+    await expectNoSeriousAxeViolations(page);
   });
 });

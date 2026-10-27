@@ -5,6 +5,7 @@ import { cache } from "react";
 
 import FlightCard from "@/components/FlightCard";
 import SpeciesCard from "@/components/SpeciesCard";
+import CartLink from "@/components/cart/CartLink";
 import { getCityCatalog } from "@/server/catalog";
 
 export const dynamic = "force-dynamic";
@@ -45,12 +46,17 @@ export default async function CityCatalogPage({ params }: PageProps) {
       <h1 className="text-3xl font-bold sm:text-4xl">
         Pescado fresco para retirar en {catalog.airport.city}
       </h1>
-      <Link
-        href="/"
-        className="mt-3 inline-block font-medium underline underline-offset-4 hover:text-neutral-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-      >
-        Cambiar ciudad
-      </Link>
+      <div className="mt-3 flex items-center gap-4">
+        <Link
+          href="/"
+          className="font-medium underline underline-offset-4 hover:text-neutral-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          Cambiar ciudad
+        </Link>
+        {catalog.shipment !== null && (
+          <CartLink airportCode={catalog.airport.code} shipmentId={catalog.shipment.id} />
+        )}
+      </div>
 
       <div className="mt-8">
         <FlightCard city={catalog.airport.city} shipment={catalog.shipment} />
@@ -63,7 +69,11 @@ export default async function CityCatalogPage({ params }: PageProps) {
         <ul className="mt-6 grid gap-4 sm:grid-cols-2">
           {catalog.items.map((item) => (
             <li key={item.slug} className="h-full">
-              <SpeciesCard item={item} orderable={catalog.shipment !== null} />
+              <SpeciesCard
+                item={item}
+                orderable={catalog.shipment !== null}
+                shipmentId={catalog.shipment?.id ?? null}
+              />
             </li>
           ))}
         </ul>

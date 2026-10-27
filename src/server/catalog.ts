@@ -6,6 +6,8 @@
 
 import "server-only";
 
+import { canOrder, ShipmentError, type ShipmentWindow } from "../domain/shipment";
+
 import { db } from "@/lib/db";
 
 import {
@@ -37,12 +39,14 @@ export async function listAirports(): Promise<AirportOption[]> {
 
 export async function getCityCatalog(
   airportCode: string,
+  /** Request instant; defaults to now. Callers that need ONE instant across
+   * several rules (e.g. the cart quote: orderability + VAT rates) pass it. */
+  at: Date = new Date(),
 ): Promise<CityCatalog | null> {
   const code = airportCode.toUpperCase();
   if (!/^[A-Z]{3}$/.test(code)) {
     return null;
   }
-  const at = new Date();
 
   const airport = await db.airport.findUnique({
     where: { code },
@@ -88,6 +92,7 @@ export async function getCityCatalog(
         description: true,
         pricePerKgCents: true,
         discountPolicy: true,
+        vatCategory: true,
         minOrderGrams: true,
         orderStepGrams: true,
         isSeasonal: true,
@@ -137,6 +142,7 @@ export async function getCityCatalog(
     description: s.description,
     pricePerKgCents: s.pricePerKgCents,
     discountPolicy: s.discountPolicy,
+    vatCategory: s.vatCategory,
     minOrderGrams: s.minOrderGrams,
     orderStepGrams: s.orderStepGrams,
     isSeasonal: s.isSeasonal,
@@ -152,4 +158,63 @@ export async function getCityCatalog(
     tiers: tiers,
     at,
   });
+}
+
+/**
+ * Current orderable shipment ids of every OTHER active airport. Used by the
+ * cart page to tell a stale cart (its shipment is no longer orderable
+ * anywhere) apart from another city's live cart, which must stay untouched
+ * so switching cities keeps showing each city's own cart.
+ */
+export async function listOtherCurrentShipmentIds(
+  airportCode: string,
+): Promise<string[]> {
+  const code = airportCode.toUpperCase();
+  if (!/^[A-Z]{3}$/.test(code)) {
+    return [];
+  }
+  const at = new Date();
+
+  // Earliest-cutoff order: the first orderable shipment per airport is its
+  // current one. Same cutoff floor as getCityCatalog keeps the query bounded.
+  const shipments = await db.shipment.findMany({
+    where: {
+      status: "SCHEDULED",
+      orderCutoffAt: { gte: new Date(at.getTime() - DAY_MS) },
+      airport: { is: { active: true, code: { not: code } } },
+    },
+    select: {
+      id: true,
+      airportId: true,
+      orderCutoffAt: true,
+      departsAt: true,
+      estimatedArrivalAt: true,
+      pickupStartsAt: true,
+      pickupEndsAt: true,
+      status: true,
+    },
+    orderBy: { orderCutoffAt: "asc" },
+  });
+
+  const currentByAirport = new Map<string, string>();
+  for (const row of shipments) {
+    if (currentByAirport.has(row.airportId)) continue;
+    const window: ShipmentWindow = {
+      orderCutoffAt: row.orderCutoffAt,
+      departsAt: row.departsAt,
+      estimatedArrivalAt: row.estimatedArrivalAt,
+      pickupStartsAt: row.pickupStartsAt,
+      pickupEndsAt: row.pickupEndsAt,
+    };
+    try {
+      if (!canOrder(window, at)) continue;
+    } catch (error) {
+      if (error instanceof ShipmentError && error.code === "INVALID_SHIPMENT_WINDOW") {
+        continue;
+      }
+      throw error;
+    }
+    currentByAirport.set(row.airportId, row.id);
+  }
+  return [...currentByAirport.values()];
 }

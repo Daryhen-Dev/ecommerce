@@ -15,6 +15,7 @@ import {
 } from "../domain/shipment";
 import { availableGrams, LotError } from "../domain/lot";
 import { isSpeciesAvailable, nextSeasonStart } from "../domain/season";
+import type { VatCategory } from "../domain/pricing";
 
 // --- row shapes (selected columns of the Prisma models; no Prisma import) ---
 
@@ -46,6 +47,7 @@ export interface SpeciesRow {
   description: string | null;
   pricePerKgCents: number;
   discountPolicy: "GLOBAL" | "CUSTOM" | "NONE";
+  vatCategory: VatCategory;
   minOrderGrams: number;
   orderStepGrams: number;
   isSeasonal: boolean;
@@ -89,7 +91,8 @@ export interface ShipmentSummary {
 
 export type SpeciesAvailability =
   | { state: "AVAILABLE"; availableGrams: number }
-  | { state: "SOLD_OUT" }
+  /** Sold out: the OPEN-lot remainder (possibly 0) is below the species minimum. */
+  | { state: "SOLD_OUT"; availableGrams: number }
   | { state: "OUT_OF_SEASON"; nextSeasonStart: Date | null };
 
 export interface CatalogItem {
@@ -100,6 +103,7 @@ export interface CatalogItem {
   minOrderGrams: number;
   orderStepGrams: number;
   discountPolicy: "GLOBAL" | "CUSTOM" | "NONE";
+  vatCategory: VatCategory;
   /** Effective tiers for this species: global for GLOBAL, its own for CUSTOM, [] for NONE. */
   tiers: { minTotalGrams: number; discountBps: number }[];
   availability: SpeciesAvailability;
@@ -233,9 +237,10 @@ function availabilityOf(
       throw error;
     }
   }
-  // A remainder smaller than the species minimum cannot be ordered.
+  // A remainder smaller than the species minimum cannot be ordered; the
+  // actual grams are carried so the cart quote can report them.
   if (total < species.minOrderGrams) {
-    return { state: "SOLD_OUT" };
+    return { state: "SOLD_OUT", availableGrams: total };
   }
   return { state: "AVAILABLE", availableGrams: total };
 }
@@ -282,6 +287,7 @@ export function mapCatalogItems(input: {
       minOrderGrams: s.minOrderGrams,
       orderStepGrams: s.orderStepGrams,
       discountPolicy: s.discountPolicy,
+      vatCategory: s.vatCategory,
       tiers: sortedTiersFor(s.discountPolicy, s.id, tiers),
       availability: availabilityOf(
         s,
