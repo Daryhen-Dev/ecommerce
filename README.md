@@ -45,3 +45,28 @@ pnpm db:studio        # browse data with Prisma Studio
 `.env.example` documents the expected environment variables. The generated
 Prisma client lives in `src/generated/` (gitignored) and is built by the
 `postinstall` script.
+
+### Demo data (local only)
+
+`prisma/seed-demo.ts` adds dev-only species, seasons, lots and shipments with
+dates relative to "now", so the storefront always has an open flight. It
+refuses to run against a non-local database or in production and only touches
+rows marked `DEMO-`.
+
+```sh
+pnpm db:seed        # base seed first (airports, tiers, tax rates)
+pnpm db:seed:demo   # demo species, lots and flights (idempotent)
+```
+
+## E2E tests
+
+End-to-end tests run with Playwright (Chromium only) against a production
+build of the app, using the local, demo-seeded database.
+
+```sh
+pnpm exec playwright install chromium  # one-time browser install
+pnpm test:e2e                          # requires db:up + migrations + demo seed
+```
+
+The Playwright server starts on port 3100 (`pnpm start --port 3100`), so it
+does not clash with a running `pnpm dev`.
