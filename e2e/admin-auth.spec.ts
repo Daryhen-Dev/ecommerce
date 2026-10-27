@@ -63,6 +63,7 @@ test("the shared password logs in and the dashboard renders", async ({ page }) =
     ["Vuelos", "/admin/shipments"],
     ["Especies", "/admin/species"],
     ["Pedidos", "/admin/orders"],
+    ["IVA", "/admin/tax"],
   ] as const;
   for (const [name, href] of sections) {
     await expect(page.getByRole("link", { name, exact: true })).toHaveAttribute(
