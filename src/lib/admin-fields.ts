@@ -64,6 +64,13 @@ export type KgFieldOptions = {
   max?: number;
   /** Noun used in messages, without the article: "El {label} ...". */
   label?: string;
+  /**
+   * Accepts an explicit zero ("0", "0.0") as `0` grams. Off by default: a
+   * weight is normally something that exists. The discount-tier threshold is
+   * the real zero case — "discount from 0 kg" — so the species form asks for
+   * it explicitly instead of reimplementing kilogram parsing.
+   */
+  allowZero?: boolean;
 };
 
 /**
@@ -72,13 +79,17 @@ export type KgFieldOptions = {
  * is exactly the one the storefront uses (`.` only, at most 3 decimals).
  */
 export function parseKgField(raw: string, options: KgFieldOptions = {}): ParseResult<number> {
-  const { min, max, label = "peso" } = options;
+  const { min, max, label = "peso", allowZero = false } = options;
   const trimmed = raw.trim();
   if (trimmed === "") {
     return { ok: false, error: `El ${label} es obligatorio.` };
   }
   if (!KG_PATTERN.test(trimmed)) {
     return { ok: false, error: KG_FORMAT_MESSAGE };
+  }
+  // A zero is not always wrong: a tier threshold may legitimately be 0 kg.
+  if (allowZero && ZERO_PATTERN.test(trimmed)) {
+    return { ok: true, value: 0 };
   }
   // `parseKilograms` rejects zero through `grams`: zero is a range error for
   // the admin (a lot weighs something), not a malformed number.
@@ -196,6 +207,51 @@ export function parseUsdField(
     return { ok: false, error: `El ${label} mínimo es ${centsForMessage(floor)}` };
   }
   return { ok: true, value: parsed.value };
+}
+
+// --- percentages ---
+
+/** Message for a percentage that is not a well-formed decimal. */
+export const PERCENT_FORMAT_MESSAGE = "Usa punto para decimales, ej. 2.5";
+
+/** Greatest percentage the panel accepts, in percent. */
+export const PERCENT_MAX = 100;
+
+/** Message for a percentage outside the 0..100 range (built from the label). */
+export function percentRangeMessage(label: string): string {
+  return `El ${label} debe estar entre 0 y ${PERCENT_MAX}.`;
+}
+
+/**
+ * Parses a percentage typed by the operator ("8", "2.5", "0") into integer
+ * basis points (800, 250, 0). Dot is the only decimal separator and at most
+ * two decimals are accepted, matching the basis-point resolution the domain
+ * stores. Zero is valid: "no discount from this threshold" is a real tier.
+ */
+export function parsePercentField(
+  raw: string,
+  options: { label?: string } = {},
+): ParseResult<number> {
+  const { label = "porcentaje" } = options;
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return { ok: false, error: `El ${label} es obligatorio.` };
+  }
+  if (!/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    return { ok: false, error: PERCENT_FORMAT_MESSAGE };
+  }
+  const [whole, fraction = ""] = trimmed.split(".");
+  if (fraction.length > 2) {
+    return { ok: false, error: PERCENT_FORMAT_MESSAGE };
+  }
+  const bps = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  if (!Number.isSafeInteger(bps)) {
+    return { ok: false, error: PERCENT_FORMAT_MESSAGE };
+  }
+  if (bps > PERCENT_MAX * 100) {
+    return { ok: false, error: percentRangeMessage(label) };
+  }
+  return { ok: true, value: bps };
 }
 
 // --- date and time ---
