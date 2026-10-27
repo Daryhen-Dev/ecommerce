@@ -72,7 +72,8 @@ SQL hands-on can operate the marketplace, so nothing real can be sold.
   - PR A-1 `feat/admin-01-foundation`: A1 + A2
   - PR A-2 `feat/admin-02-operation`: A3 + A4
   - PR A-3 `feat/admin-03-species-orders`: A5 + A6
-- Running count: 1,037 (A1, lockfile excluded).
+- Running count: 1,037 (A1) + 1,129 (A2) = 2,166, lockfile excluded.
+  PR A-1 slice = `1086caf..256f675` + docs.
 
 ## Tasks
 
@@ -91,10 +92,19 @@ SQL hands-on can operate the marketplace, so nothing real can be sold.
       RDD-off path: independent verifier ran. Retry native review later.
       Note: `src/middleware.ts` uses Next 16's deprecated middleware
       convention (build warning); migrate to `src/proxy.ts` later.
-- [ ] A2 — Shared admin server kit: form field parsing/validation helpers
+- [x] A2 — Shared admin server kit: form field parsing/validation helpers
       (kg→grams, USD→cents, datetime-local → Date in `America/Guayaquil`),
       action-result pattern, field-error rendering components; unit-tested.
-      Route: delegated.
+      Route: delegated. Commit `256f675`. TDD RED→GREEN (50 new unit tests,
+      305 total); lint/typecheck/build/test:e2e pass; independent
+      gentle-ai-verify PASS (datetime cross-day probes, money boundaries,
+      admin-auth diff strictly additive). Native review: **unavailable** —
+      same persistent `schema-incompatible` failure on review.start for both
+      commits of this slice; RDD-off fallback applied (independent verifier
+      ran). 1,129 authored lines (487 tests).
+      Choices: labels are nouns without article ("El peso mínimo es…");
+      select is case-sensitive after trim; extra exported message constants
+      reused by A3+ forms.
 - [ ] A3 — Lots: list + create + close (+ cancel-with-warning), species
       selector, validation vs rules, reflects on storefront immediately
       (catalog availability). E2E: create a lot, see new availability on
@@ -136,6 +146,12 @@ SQL hands-on can operate the marketplace, so nothing real can be sold.
   E2E only).
 - `safeRedirectPath` has no unit test yet; add with A2's test kit.
 
+- ~~Unit tests for `safeRedirectPath`~~ — partial: login redirect covered
+  via E2E + code review; parser-level tests still pending.
+- Native review outage: `review.start` fails with `schema-incompatible` for
+  every committed candidate since A1 (diagnostics identical each time, no
+  lineage created). Blocked until the harness recovers; retry per PR slice.
+
 ## Next step
 
-A2 — shared admin form/validation kit (TDD).
+Open PR A-1, then A3 — lots (branch `feat/admin-02-operation`).
