@@ -154,11 +154,26 @@ validation.
       reliability; covers T3b + T3c + docs since 98780bd; 3 advisory
       findings: CHECK/formula coupling, nonempty-table migration warning,
       seed rate immutability note).
-- [ ] T4 — Domain: season availability (pre-sale only inside the window) and
+- [x] T4 — Domain: season availability (pre-sale only inside the window) and
       shipment ordering window (cutoff before departure, per-city). TDD.
-      Route: delegated.
-- [ ] T5 — Domain: lot reservation (available kg per lot, no overselling,
-      min/step order validation). TDD. Route: delegated.
+      Route: delegated. Commit `b69cbf2`. TDD RED→GREEN (season, shipment,
+      barrel); 127 tests total; lint/typecheck/build pass; independent
+      gentle-ai-verify pass (36 semantic probes). Native review: medium,
+      reliability, approved and acknowledged (`review-1aa752034b30a27d`);
+      2 advisory findings (shipmentPhase precedence warning,
+      species input shape suggestion). Documented product choices:
+      overlapping seasons → latest startsAt wins; phase between arrival and
+      pickupStartsAt → PICKUP; pickupEndsAt before arrival allowed (flagged
+      as possible future invariant).
+- [x] T5 — Domain: lot reservation (available kg per lot, no overselling,
+      min/step order validation). TDD. Route: delegated. Commit `d6b3211`.
+      TDD RED→GREEN; 159 tests total; lint/typecheck/build pass; independent
+      gentle-ai-verify pass (56 probes). Native review: medium, reliability,
+      approved and acknowledged (`review-a3ee72ef232f6725`); 2 advisory
+      suggestions on `canFulfillOrder` boundary and test coverage of the
+      invalid min/step branch. Documented choices: release on a CLOSED lot
+      is allowed (cancelled orders); `canReserve` returns false instead of
+      throwing; step anchored to `(grams − min) % step`.
 
 ## Acceptance criteria
 
@@ -195,4 +210,5 @@ validation.
 
 ## Next step
 
-PR #3: T4 — season availability + shipment ordering window (TDD).
+Feature complete. Close: PR #3 body update + owner decides merges/next
+feature.
