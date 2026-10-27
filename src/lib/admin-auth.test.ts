@@ -14,6 +14,7 @@ import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE_SECONDS,
   createAdminAuth,
+  getAdminSessionTokenFromCookieStore,
   type AdminAuth,
 } from "./admin-auth";
 
@@ -161,5 +162,36 @@ describe("admin session cookie constants", () => {
   it("uses a 12 hour cookie", () => {
     expect(ADMIN_SESSION_COOKIE).toBe("admin_session");
     expect(ADMIN_SESSION_MAX_AGE_SECONDS).toBe(12 * 60 * 60);
+  });
+});
+
+// The accessor is what Server Actions and Server Components call instead of
+// repeating the cookie name: it takes an injected store (Next's `cookies()`
+// fits the shape) so the read is testable without a request context.
+describe("getAdminSessionTokenFromCookieStore", () => {
+  function storeWith(entries: Record<string, string>) {
+    return {
+      get(name: string): { value: string } | undefined {
+        const value = entries[name];
+        return value === undefined ? undefined : { value };
+      },
+    };
+  }
+
+  it("reads the session cookie value", () => {
+    expect(
+      getAdminSessionTokenFromCookieStore(storeWith({ [ADMIN_SESSION_COOKIE]: "payload.signature" })),
+    ).toBe("payload.signature");
+  });
+
+  it("returns undefined when the cookie is absent", () => {
+    expect(getAdminSessionTokenFromCookieStore(storeWith({}))).toBeUndefined();
+    expect(
+      getAdminSessionTokenFromCookieStore(storeWith({ other_cookie: "x" })),
+    ).toBeUndefined();
+  });
+
+  it("returns an empty value as-is so verification rejects it", () => {
+    expect(getAdminSessionTokenFromCookieStore(storeWith({ [ADMIN_SESSION_COOKIE]: "" }))).toBe("");
   });
 });

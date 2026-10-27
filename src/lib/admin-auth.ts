@@ -191,3 +191,23 @@ export function verifyAdminSessionToken(token: string | null | undefined): boole
   }
   return authForSecret(secret).verifyAdminSession(token);
 }
+
+/**
+ * The slice of Next's `cookies()` store this module needs. Declared
+ * structurally so the accessor can be unit-tested with a plain double, and so
+ * a Server Component or Server Action can pass its awaited store as-is.
+ */
+export type AdminCookieStore = {
+  get(name: string): { value: string } | undefined;
+};
+
+/**
+ * Reads the signed session token from a cookie store. Returns `undefined`
+ * when the cookie is absent; an empty value is returned as-is so
+ * `verifyAdminSession` rejects it like any other malformed token.
+ */
+export function getAdminSessionTokenFromCookieStore(
+  store: AdminCookieStore,
+): string | undefined {
+  return store.get(ADMIN_SESSION_COOKIE)?.value;
+}
